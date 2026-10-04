@@ -14,27 +14,30 @@ Two layers:
 ## Setup
 
 ```bash
-git clone <this repo> && cd hots-coach
-git clone https://github.com/Blizzard/heroprotocol ~/src/heroprotocol
-pip install --user mpyq six
-
-# in your shell rc
-export HOTS_PLAYER=YourName                 # in-game name, no #1234
-export HEROPROTOCOL_PATH=~/src/heroprotocol
-export HOTS_REPLAY_DIR="/path/to/Replays/Multiplayer"
+git clone https://github.com/theNoahWilkes/CoachClaude && cd CoachClaude
+python3 -m pip install -r requirements.txt     # Windows: py -m pip install -r requirements.txt
+python3 .claude/skills/hots-coach/scripts/hotscoach.py setup
 ```
 
-Replays live under `Documents/Heroes of the Storm/Accounts/<id>/<region>-Hero-1-<id>/Replays/Multiplayer`.
-On Linux with Wine/Proton that is inside the prefix's `drive_c/users/<user>/`.
+`setup` finds your replay folder (Windows, macOS, Wine/Lutris/Proton/Bottles, WSL),
+detects your in-game name from your recent replays, and writes
+`~/.config/hotscoach/config.json`. Nothing else to configure.
 
-`heroprotocol` on PyPI is stale and breaks on Python 3.12; the script loads protocol
-modules from the GitHub clone directly and falls back to the newest one for new builds.
+**Even easier with [uv](https://docs.astral.sh/uv/):** skip the pip step entirely.
+The script declares its own dependencies, so this installs them on first run:
+
+```bash
+uv run .claude/skills/hots-coach/scripts/hotscoach.py setup
+```
+
+If pip complains about an "externally managed environment" (Homebrew Python, some
+Linux distros), use uv, or a venv: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 
 ## CLI
 
 ```bash
 S=.claude/skills/hots-coach/scripts/hotscoach.py
-python3 $S batch "$HOTS_REPLAY_DIR" --new-only     # analyze + log new games
+python3 $S batch --new-only                        # analyze + log new games
 python3 $S analyze game.StormReplay [--json]       # one game
 python3 $S timeline game.StormReplay               # levels, XP by source, every death/objective/camp
 python3 $S positions game.StormReplay --start 4:00 --end 4:30
@@ -50,10 +53,14 @@ coach tonight's games
 why did we lose the last Dragon Shire?
 ```
 
-To use it from anywhere, symlink the skill into your personal skills:
-`ln -s "$PWD/.claude/skills/hots-coach" ~/.claude/skills/hots-coach`
+To use it from anywhere, link the skill into your personal skills:
 
-Your lessons file lives at `~/.local/share/hotscoach/lessons-$HOTS_PLAYER.md` and your
+```bash
+ln -s "$PWD/.claude/skills/hots-coach" ~/.claude/skills/hots-coach                 # macOS/Linux
+cmd /c mklink /J "%USERPROFILE%\.claude\skills\hots-coach" ".claude\skills\hots-coach"   # Windows
+```
+
+Your lessons file lives at `~/.local/share/hotscoach/lessons-<you>.md` and your
 game log at `~/.local/share/hotscoach/games.db`, both outside the repo, so everyone's
 history stays their own.
 

@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#   "mpyq>=0.2.5",
+#   "six>=1.14",
+#   "heroprotocol @ git+https://github.com/Blizzard/heroprotocol",
+# ]
+# ///
 """hotscoach - rule-based post-game coach for Heroes of the Storm replays.
 
+First run:
+  hotscoach.py setup        finds your replays, detects your name, writes config
+
 Usage:
-  hotscoach.py analyze REPLAY [--player NAME] [--json]
-  hotscoach.py batch DIR [--player NAME] [--new-only]
+  hotscoach.py analyze REPLAY [--json]
+  hotscoach.py batch [DIR] [--new-only]
   hotscoach.py trend [--last N] [--hero HERO]
-  hotscoach.py timeline REPLAY [--player NAME]
-  hotscoach.py positions REPLAY --start M:SS --end M:SS [--player NAME]
+  hotscoach.py timeline REPLAY
+  hotscoach.py positions REPLAY --start M:SS --end M:SS
+  (any command accepts --player NAME to override the configured player)
 
-Requires: pip install mpyq six
-          git clone https://github.com/Blizzard/heroprotocol  (set HEROPROTOCOL_PATH)
-
-Player defaults to $HOTS_PLAYER. Game log lives in $HOTSCOACH_DB
-(default ~/.local/share/hotscoach/games.db).
+Dependencies: pip install -r requirements.txt  (or run with `uv run`, which reads the
+header above). Config: ~/.config/hotscoach/config.json. Env vars HOTS_PLAYER,
+HOTS_REPLAY_DIR, HEROPROTOCOL_PATH and HOTSCOACH_DB override it.
 """
 import argparse, glob, hashlib, importlib.util, json, math, os, re, sqlite3, sys
+from collections import Counter
 from collections import defaultdict
 
 # ---------------------------------------------------------------- tunables
@@ -44,17 +55,33 @@ def norm(name):
 _PROTO_CACHE = {}
 
 
+def _versions_dir():
+    """Find heroprotocol's protocol modules: $HEROPROTOCOL_PATH clone, else pip install."""
+    base = os.environ.get("HEROPROTOCOL_PATH")
+    if base:
+        base = os.path.expanduser(base)
+        sys.path.insert(0, base)
+        return os.path.join(base, "heroprotocol", "versions")
+    spec = importlib.util.find_spec("heroprotocol")
+    if spec and spec.origin:
+        return os.path.join(os.path.dirname(spec.origin), "versions")
+    clone = os.path.expanduser("~/src/heroprotocol")
+    if os.path.isdir(clone):
+        sys.path.insert(0, clone)
+        return os.path.join(clone, "heroprotocol", "versions")
+    sys.exit("heroprotocol not found: run `pip install -r requirements.txt` "
+             "(or `uv run hotscoach.py ...`)")
+
+
 def load_protocol(build=None):
+    """Load a protocol module directly, bypassing heroprotocol's broken (imp-based) loader."""
     if build in _PROTO_CACHE:
         return _PROTO_CACHE[build]
-    """Load heroprotocol's protocol module without its broken (imp-based) loader."""
-    base = os.environ.get("HEROPROTOCOL_PATH", os.path.expanduser("~/src/heroprotocol"))
-    sys.path.insert(0, base)
-    vdir = os.path.join(base, "heroprotocol", "versions")
+    vdir = _versions_dir()
     builds = sorted(int(m.group(1)) for f in os.listdir(vdir)
                     if (m := re.match(r"protocol(\d+)\.py$", f)))
     if not builds:
-        sys.exit(f"no protocol modules in {vdir}; set HEROPROTOCOL_PATH")
+        sys.exit(f"no protocol modules in {vdir}")
     pick = build if build in builds else builds[-1]
     if build is not None and pick != build:
         print(f"note: no protocol for build {build}, using {pick} (usually fine)",
@@ -65,6 +92,64 @@ def load_protocol(build=None):
     spec.loader.exec_module(mod)
     _PROTO_CACHE[build] = mod
     return mod
+
+
+# ---------------------------------------------------------------- config
+CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
+DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def configured(key, env):
+    return os.environ.get(env) or load_config().get(key)
+
+
+def candidate_replay_roots():
+    """Where HotS keeps replays on each platform (Accounts folder; searched recursively)."""
+    h = os.path.expanduser("~")
+    tail = os.path.join("Documents", "Heroes of the Storm", "Accounts")
+    pats = [
+        os.path.join(h, tail),                                              # Windows
+        os.path.join(h, "OneDrive", tail),                                  # Windows + OneDrive
+        os.path.join(h, "Library", "Application Support", "Blizzard",
+                     "Heroes of the Storm", "Accounts"),                    # macOS
+        os.path.join(h, ".wine*", "drive_c", "users", "*", tail),           # Wine
+        os.path.join(h, "Games", "*", "drive_c", "users", "*", tail),       # Lutris
+        os.path.join(h, ".local", "share", "Steam", "steamapps", "compatdata", "*",
+                     "pfx", "drive_c", "users", "*", tail),                 # Proton
+        os.path.join(h, ".steam", "steam", "steamapps", "compatdata", "*",
+                     "pfx", "drive_c", "users", "*", tail),
+        os.path.join(h, ".var", "app", "com.usebottles.bottles", "data", "bottles",
+                     "bottles", "*", "drive_c", "users", "*", tail),        # Bottles
+        os.path.join("/mnt", "c", "Users", "*", tail),                      # WSL
+    ]
+    found = []
+    for p in pats:
+        for d in glob.glob(p):
+            if os.path.isdir(d) and d not in found:
+                found.append(d)
+    return found
+
+
+def find_replays(root):
+    return sorted(glob.glob(os.path.join(root, "**", "*.StormReplay"), recursive=True),
+                  key=os.path.getmtime)
+
+
+def replay_names(path):
+    import mpyq
+    archive = mpyq.MPQArchive(path)
+    header = load_protocol().decode_replay_header(archive.header["user_data_header"]["content"])
+    proto = load_protocol(header["m_version"]["m_baseBuild"])
+    det = proto.decode_replay_details(archive.read_file("replay.details"))
+    return [p["m_name"].decode() for p in det["m_playerList"]]
 
 
 def read_replay(path):
@@ -341,7 +426,7 @@ def analyze(g):
 
 # ---------------------------------------------------------------- storage
 def db():
-    path = os.environ.get("HOTSCOACH_DB", os.path.expanduser("~/.local/share/hotscoach/games.db"))
+    path = os.environ.get("HOTSCOACH_DB", os.path.join(DATA_DIR, "games.db"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     con = sqlite3.connect(path)
     con.execute("CREATE TABLE IF NOT EXISTS games (id TEXT PRIMARY KEY, played TEXT, file TEXT, metrics TEXT)")
@@ -393,7 +478,10 @@ def cmd_analyze(a):
 def cmd_batch(a):
     con = db()
     seen = {r[0] for r in con.execute("SELECT id FROM games")}
-    files = sorted(glob.glob(os.path.join(a.dir, "**", "*.StormReplay"), recursive=True))
+    root = a.dir or configured("replay_dir", "HOTS_REPLAY_DIR")
+    if not root:
+        sys.exit("no replay folder: pass DIR or run `hotscoach.py setup`")
+    files = find_replays(root)
     for f in files:
         if a.new_only and replay_id(f) in seen:
             continue
@@ -500,24 +588,89 @@ def cmd_positions(a):
         print(f"{fmt(t):>6} " + " ".join(cells))
 
 
+def cmd_setup(a):
+    print("hotscoach setup\n")
+    # 1. dependencies
+    try:
+        import mpyq  # noqa: F401
+        load_protocol()
+        print("  [ok] dependencies (mpyq, heroprotocol)")
+    except (ImportError, SystemExit) as e:
+        sys.exit(f"  [!!] missing dependencies: {e}\n"
+                 "       run: pip install -r requirements.txt   (or use `uv run`)")
+    cfg = load_config()
+
+    # 2. replay folder
+    root = a.replay_dir or os.environ.get("HOTS_REPLAY_DIR") or cfg.get("replay_dir")
+    if not root:
+        found = [d for d in candidate_replay_roots() if find_replays(d)]
+        if not found:
+            sys.exit("  [!!] couldn't find a Heroes of the Storm replay folder.\n"
+                     "       Play a game first, or pass --replay-dir PATH "
+                     "(the folder containing your .StormReplay files).")
+        if len(found) > 1:
+            for i, d in enumerate(found):
+                print(f"       {i + 1}) {d}")
+            root = found[int(input("  which replay folder? ") or 1) - 1]
+        else:
+            root = found[0]
+    replays = find_replays(root)
+    print(f"  [ok] replays: {root} ({len(replays)} found)")
+
+    # 3. player name: the one name present in all of your recent replays
+    player = a.player or os.environ.get("HOTS_PLAYER") or cfg.get("player")
+    if not player:
+        recent = replays[-15:]
+        counts = Counter(n for f in recent for n in set(replay_names(f)))
+        top = [n for n, c in counts.most_common() if c == counts.most_common(1)[0][1]]
+        if len(recent) >= 3 and len(top) == 1:
+            player = top[0]
+            print(f"  [ok] player: {player} (in all {counts[player]} recent replays)")
+        else:
+            if top:
+                print(f"       candidates: {', '.join(top)}")
+            player = input("  your in-game name: ").strip()
+    else:
+        print(f"  [ok] player: {player}")
+
+    # 4. save config + lessons file
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    cfg.update(player=player, replay_dir=root)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)
+    print(f"  [ok] config: {CONFIG_PATH}")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
+    if not os.path.exists(lessons):
+        tmpl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                            "references", "lessons-template.md")
+        text = open(tmpl).read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
+        with open(lessons, "w") as f:
+            f.write(text.replace("<player>", player))
+    print(f"  [ok] lessons: {lessons}")
+    print("\nDone. Try: hotscoach.py batch --new-only   or, in Claude Code: coach my last game")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Rule-based HotS replay coach")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("analyze"); p.add_argument("replay"); p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_analyze)
-    p = sub.add_parser("batch"); p.add_argument("dir"); p.add_argument("--new-only", action="store_true")
+    p = sub.add_parser("batch"); p.add_argument("dir", nargs="?"); p.add_argument("--new-only", action="store_true")
     p.set_defaults(fn=cmd_batch)
     p = sub.add_parser("timeline"); p.add_argument("replay"); p.set_defaults(fn=cmd_timeline)
     p = sub.add_parser("positions"); p.add_argument("replay")
     p.add_argument("--start", required=True); p.add_argument("--end", required=True)
     p.set_defaults(fn=cmd_positions)
+    p = sub.add_parser("setup"); p.add_argument("--player"); p.add_argument("--replay-dir")
+    p.set_defaults(fn=cmd_setup)
     p = sub.add_parser("trend"); p.add_argument("--last", type=int, default=20); p.add_argument("--hero")
     p.set_defaults(fn=cmd_trend)
     for name in ("analyze", "batch", "timeline", "positions"):
-        sub.choices[name].add_argument("--player", default=os.environ.get("HOTS_PLAYER"))
+        sub.choices[name].add_argument("--player", default=configured("player", "HOTS_PLAYER"))
     a = ap.parse_args()
     if a.cmd in ("analyze", "batch", "timeline", "positions") and not a.player:
-        sys.exit("set --player or $HOTS_PLAYER")
+        sys.exit("no player configured: run `hotscoach.py setup` (or pass --player)")
     a.fn(a)
 
 

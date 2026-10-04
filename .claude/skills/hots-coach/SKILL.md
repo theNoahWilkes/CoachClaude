@@ -9,39 +9,41 @@ You are a post-game coach for one player (the "player") in Heroes of the Storm. 
 player wants an honest outside read, not reassurance: specific, timestamped, grounded in
 replay data, and clear about what was in their control versus their team's.
 
-Everything is driven by `scripts/hotscoach.py` (stdlib + `mpyq`, plus Blizzard's
-`heroprotocol` repo on disk). Run it from this skill's directory.
+Everything is driven by `scripts/hotscoach.py` (stdlib + `mpyq` + Blizzard's
+`heroprotocol`). Paths below are relative to this skill's directory.
 
 ## 0. Setup check (do this first, once per session)
 
-Required environment:
-- `HOTS_PLAYER` - the player's in-game name (battletag name without the #number)
-- `HEROPROTOCOL_PATH` - path to a clone of https://github.com/Blizzard/heroprotocol
-  (default `~/src/heroprotocol`)
-- `HOTS_REPLAY_DIR` - optional, the folder that holds `*.StormReplay` files
-- `HOTSCOACH_DB` - optional, defaults to `~/.local/share/hotscoach/games.db`
+Pick the interpreter once: if `uv` is on PATH, run the script as
+`uv run scripts/hotscoach.py ...` (it installs dependencies from the script header
+automatically). Otherwise use `python3` (or `py` on Windows, or the repo's `.venv`
+interpreter if one exists).
 
-If `heroprotocol` is missing, clone it to the default path. If `mpyq`/`six` are missing,
-`pip install --user mpyq six`. If `HOTS_PLAYER` is unset, ask the player for their name
-once rather than guessing. Do not try to fix heroprotocol's own loader: the script loads
-protocol modules directly and falls back to the newest one for unknown builds (a stderr
-note about this is normal).
+If `~/.config/hotscoach/config.json` doesn't exist, run `hotscoach.py setup`. It checks
+dependencies, finds the replay folder on Windows/macOS/Wine/Proton/WSL, detects the
+player's name (the one present in all recent replays), writes the config, and creates
+the lessons file. If it asks a question (multiple replay folders, ambiguous name), relay
+it to the player rather than guessing. If dependencies are missing, run
+`pip install -r requirements.txt` from the repo root, then rerun setup.
+
+After setup, no command needs `--player` or a replay path. Env vars `HOTS_PLAYER`,
+`HOTS_REPLAY_DIR`, `HEROPROTOCOL_PATH`, `HOTSCOACH_DB` override the config if set.
+A stderr note about using an older protocol for a newer build is normal.
 
 ## 1. Find the games
 
 - A specific file → analyze that one.
-- "Tonight", "this session", "my last N games" → `batch "$HOTS_REPLAY_DIR" --new-only`
-  logs and reports every replay not yet in the database. Use file names/mtimes to
+- "Tonight", "this session", "my last N games" → `batch --new-only` logs and reports
+  every replay in the configured folder not yet in the database. Use file names/mtimes to
   narrow to the requested session if needed.
-- If the replay folder is unknown, `find ~ -name '*.StormReplay' -newer <something>`;
-  on Linux under Wine/Proton it lives inside the prefix under
-  `drive_c/users/<user>/Documents/Heroes of the Storm/Accounts/.../Replays/Multiplayer`.
+- If setup couldn't find the folder, search for `*.StormReplay` files and rerun
+  `setup --replay-dir PATH`.
 
 ## 2. Read the player's history
 
 Before coaching, read the lessons file at
-`~/.local/share/hotscoach/lessons-$HOTS_PLAYER.md` (create it from
-`references/lessons-template.md` if absent). It holds the player's recurring patterns
+`~/.local/share/hotscoach/lessons-<player>.md` (setup creates it from
+`references/lessons-template.md`). It holds the player's recurring patterns
 and what they are currently working on. Coaching should connect to it: call out when an
 old pattern repeats and when it didn't.
 

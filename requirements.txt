@@ -1,0 +1,3 @@
+mpyq>=0.2.5
+six>=1.14
+heroprotocol @ git+https://github.com/Blizzard/heroprotocol
