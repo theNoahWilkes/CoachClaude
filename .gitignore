@@ -1,0 +1,5 @@
+*.StormReplay
+*.db
+__pycache__/
+lessons-*.md
+!.claude/skills/hots-coach/references/lessons-template.md
