@@ -43,8 +43,9 @@ BRUISERS = {"artanis", "chen", "dva", "deathwing", "dehaka", "gazlowe", "hogger"
             "varian", "xul", "yrel"}
 OBJECTIVE_RE = re.compile(r"DragonKnightActivated|Altar Captured|Shrine Captured|"
                           r"SoulEatersSpawned|NukesSpawned|Tribute|RavenCurse|Immortal|"
-                          r"GardenTerror|SkyTemple|Doubloon|BraxisWave|BraxisHoldoutMapEventComplete|Payload|Beacon|CapturePointComplete")
+                          r"GardenTerror|SkyTempleActivated|HauntedMinesGolemsSpawned|Doubloon|BraxisWave|BraxisHoldoutMapEventComplete|Payload|Beacon|CapturePointComplete")
 CARRY_DROP_RE = re.compile(r"Dropped")   # e.g. WarheadJunctionNukeDropped
+ARAM_MAPS = {"Silver City", "Industrial District", "Braxis Outpost", "Lost Cavern"}  # excluded from trend by default
 
 
 def norm(name):
@@ -497,6 +498,8 @@ def cmd_batch(a):
 def cmd_trend(a):
     rows = db().execute("SELECT played, metrics FROM games ORDER BY played").fetchall()
     ms = [json.loads(r[1]) for r in rows]
+    if not a.aram:
+        ms = [m for m in ms if m["map"] not in ARAM_MAPS]
     if a.hero:
         ms = [m for m in ms if norm(m["hero"]) == norm(a.hero)]
     ms = ms[-a.last:]
@@ -665,6 +668,7 @@ def main():
     p = sub.add_parser("setup"); p.add_argument("--player"); p.add_argument("--replay-dir")
     p.set_defaults(fn=cmd_setup)
     p = sub.add_parser("trend"); p.add_argument("--last", type=int, default=20); p.add_argument("--hero")
+    p.add_argument("--aram", action="store_true", help="include ARAM maps")
     p.set_defaults(fn=cmd_trend)
     for name in ("analyze", "batch", "timeline", "positions"):
         sub.choices[name].add_argument("--player", default=configured("player", "HOTS_PLAYER"))
