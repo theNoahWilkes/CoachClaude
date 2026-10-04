@@ -14,7 +14,9 @@ replays on build 98304 unless marked otherwise.
 | Braxis Holdout | 2 | `BraxisHoldoutMapEventComplete` | Two-lane: healer goes with the four, never solo. |
 | Garden of Terror | 3 | none emitted | Objective not detectable; skip pre-objective checks. |
 | Hanamura Temple | 2 | none emitted | Payload not detectable; 1-4 split, healer in the four. |
-| Cursed Hollow, Sky Temple, Battlefield of Eternity, Blackheart's Bay, Alterac Pass | - | unverified patterns in `OBJECTIVE_RE` | Check `timeline` output on first replay and update this table. |
+| Haunted Mines | 2 + mines | `HauntedMinesGolemsSpawned` (fixedData TeamID 4096=team 0, 8192=team 1; SkullCount/4096 = skulls) | Fires when mines close, so "before objective" = died in the mines fight. Mine-open isn't emitted. |
+| Sky Temple | 3 | `SkyTempleActivated` | `SkyTempleCaptured`/`ShotsFired` fire every second a temple is held; don't match them. |
+| Cursed Hollow, Battlefield of Eternity, Blackheart's Bay, Alterac Pass | - | unverified patterns in `OBJECTIVE_RE` | Check `timeline` output on first replay and update this table. |
 
 When a new map shows up, run `timeline`, look for map-specific `SStatGameEvent` names
 (dump them with a few lines of Python if needed), add any objective event to
