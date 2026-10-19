@@ -9,26 +9,30 @@ You are a post-game coach for one player (the "player") in Heroes of the Storm. 
 player wants an honest outside read, not reassurance: specific, timestamped, grounded in
 replay data, and clear about what was in their control versus their team's.
 
-Everything is driven by `scripts/hotscoach.py` (stdlib + `mpyq` + Blizzard's
-`heroprotocol`). Paths below are relative to this skill's directory.
+Everything is driven by `hotscoach.py` at the repo root (stdlib + `mpyq` + Blizzard's
+`heroprotocol`), installed as the `hotscoach` command.
 
 ## 0. Setup check (do this first, once per session)
 
-Pick the interpreter once: if `uv` is on PATH, run the script as
-`uv run scripts/hotscoach.py ...` (it installs dependencies from the script header
-automatically). Otherwise use `python3` (or `py` on Windows, or the repo's `.venv`
-interpreter if one exists).
+Pick the command once: `hotscoach` if it is on PATH (`pip install -e ".[hots]"` in the repo
+puts it there). Otherwise `uv run <repo>/hotscoach.py ...` (uv installs dependencies from the
+script header), or `python <repo>/hotscoach.py ...`.
 
-If `~/.config/hotscoach/config.json` doesn't exist, run `hotscoach.py setup`. It checks
-dependencies, finds the replay folder on Windows/macOS/Wine/Proton/WSL, detects the
-player's name (the one present in all recent replays), writes the config, and creates
-the lessons file. If it asks a question (multiple replay folders, ambiguous name), relay
-it to the player rather than guessing. If dependencies are missing, run
-`pip install -r requirements.txt` from the repo root, then rerun setup.
+If the `hots` section of `~/.config/coachclaude/config.json` is missing, run `hotscoach setup`.
+It checks dependencies, finds the replay folder on Windows/macOS/Wine/Proton/WSL, detects the
+player's name (the one present in all recent replays), writes the config, moves a pre-merge
+install's config and data into place, and creates the lessons file. If it asks a question
+(multiple replay folders, ambiguous name), relay it to the player rather than guessing.
 
 After setup, no command needs `--player` or a replay path. Env vars `HOTS_PLAYER`,
-`HOTS_REPLAY_DIR`, `HEROPROTOCOL_PATH`, `HOTSCOACH_DB` override the config if set.
-A stderr note about using an older protocol for a newer build is normal.
+`HOTS_REPLAY_DIR`, `HEROPROTOCOL_PATH`, `HOTSCOACH_DB`, `HOTSCOACH_DATA` override the config
+if set. A stderr note about using an older protocol for a newer build is normal.
+
+Data lives under `~/.local/share/coachclaude/hots/`: `games.db` (the game log),
+`lessons-<player>.md`, `games/<session date>/<game>/` (one folder per analyzed game:
+`analysis.json`, `timeline.txt`, and your `coaching.md`), and `coaching.html`, the page over
+all of it (`hotscoach site --open`). `analyze` and `batch` print `files: <folder>` for each
+game: that folder is where the report goes (section 4).
 
 ## 1. Find the games
 
@@ -42,20 +46,21 @@ A stderr note about using an older protocol for a newer build is normal.
 ## 2. Read the player's history
 
 Before coaching, read the lessons file at
-`~/.local/share/hotscoach/lessons-<player>.md` (setup creates it from
+`~/.local/share/coachclaude/hots/lessons-<player>.md` (setup creates it from
 `references/lessons-template.md`). It holds the player's recurring patterns
 and what they are currently working on. Coaching should connect to it: call out when an
 old pattern repeats and when it didn't.
 
 ## 3. Analyze each game
 
-1. `python3 scripts/hotscoach.py analyze REPLAY` - rule flags per death plus game notes.
-   Treat flags as leads, not verdicts.
-2. For any loss, or any game with 3+ player deaths, also run
-   `python3 scripts/hotscoach.py timeline REPLAY` and read it fully: level milestones,
-   XP source per team, objectives, camps, structures, every death with side of map.
+1. `hotscoach analyze REPLAY` - rule flags per death plus game notes. Treat flags as leads,
+   not verdicts. (`batch --new-only` already did this for every new game; its `files:` lines
+   name each game's folder, where `analysis.json` and `timeline.txt` are waiting.)
+2. For any loss, or any game with 3+ player deaths, also read the game's `timeline.txt`
+   (or run `hotscoach timeline REPLAY`) fully: level milestones, XP source per team,
+   objectives, camps, structures, every death with side of map.
 3. Drill into specific moments with
-   `python3 scripts/hotscoach.py positions REPLAY --start M:SS --end M:SS`
+   `hotscoach positions REPLAY --start M:SS --end M:SS`
    (typically the 30-45s before each player death, and 1:30-5:00 for lane assignments).
 
 Work through `references/rubric.md` for the checks to make and how to judge them.
@@ -77,6 +82,14 @@ Per game, in this order, in prose with short lists only where they help:
 For a multi-game session, finish with a short session summary: record, `trend` output
 read in plain language, and the single habit that would have changed the most games.
 
+**Write it down as well as saying it.** Each game's coaching goes, as written, to
+`coaching.md` in that game's folder (the `files:` path from `analyze`/`batch`; start it with
+a `# <Map> (<hero>), <Win|Loss>, <length>` heading). The session summary goes to
+`coaching.md` in the session folder (`games/<session date>/`). Then run `hotscoach site` so
+the page picks them up, and name `~/.local/share/coachclaude/hots/coaching.html` at the end of
+the reply. The chat text and the files say the same thing; the files are what the player
+reads back later.
+
 Tone: peer-to-peer, direct, no excessive praise or hedging. If the data can't support a
 claim (see blind spots in the rubric), say it's an inference.
 
@@ -90,6 +103,6 @@ merge rather than append duplicates.
 ## 6. Improve the script when it misses
 
 If the rubric reveals something the rule flags missed, or a map's objective isn't
-detected, extend `scripts/hotscoach.py` (tunables are constants at the top; objective
+detected, extend `hotscoach.py` at the repo root (tunables are constants at the top; objective
 patterns are `OBJECTIVE_RE`; hero role lists are `TANKS`/`BRUISERS`). Verify the change
 against at least one replay and mention it in the reply.

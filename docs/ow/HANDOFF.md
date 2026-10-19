@@ -15,7 +15,16 @@ Noah's Windows PC). Read this before touching anything.
 
 ## Where things are (since 2026-10-18)
 
-`owcoach/config.py` owns every path. `~/.config/coachclaude/config.json` names the capture
+**The repo is CoachClaude** (`github.com/theNoahWilkes/CoachClaude`, local clone under
+`~/source/repos/CoachClaude`): `owcoach/` (this package), `hotscoach.py` (the Heroes of the
+Storm coach, one file), `coachlib/` (what they share: `config.py`, the one config file with a
+section per game, and `site.py`, the page renderer), `.claude/skills/{ow-coach,hots-coach}/`,
+`docs/ow/` (this file, the labels). `pip install -e ".[ow,hots]"` puts `owcoach` and
+`hotscoach` on PATH; `owcoach install-skill` links both skills into `~/.claude/skills`.
+owcoach came in squashed on 2026-10-18 (its 55-commit history stays in the old repo under
+`Videos/NVIDIA/Overwatch 2/owcoach/src`, now an archive).
+
+`owcoach/config.py` owns every OW path. `~/.config/coachclaude/config.json` names the capture
 folder(s), the **library** (`~/Videos/owcoach` by default: `<session>/` folders, `.cache/<stem>/`
 scan caches) and the **profile** (`~/.local/share/coachclaude/ow`: profile.json,
 nameplate, portraits, hud_layouts, history.sqlite, lessons.md, focus_proposal*.md, heroes/).
@@ -405,8 +414,16 @@ checked against the stills, and it caught the u02 bug above.
      stills, the facts line and the reader notes folded; a session page has the games table, the
      summary and the trend; Lessons and Focus proposal are pages; home is every game. Noah's
      long-term note: the dollar estimate in `coach` is for building only, not to ship (a default
-     vs low-cost mode instead). Next: step 3, the repo merge (git subtree into CoachClaude,
-     pyproject with extras, HotS coach writing coaching.md and feeding the same `render`).
+     vs low-cost mode instead).
+   - **The merge (2026-10-18), step 3 of 3:** owcoach joined CoachClaude as a light monorepo
+     (Noah: "light monorepo", "separate pages", "always squash"). Shared code is only
+     `coachlib.config` (one file, sections `ow` and `hots`) and `coachlib.site` (the renderer,
+     now data-driven: a collector hands it days -> sessions -> games with cells, tables, a
+     timeline, moments and folded details; `owcoach/site.py` is the OW collector). The HotS
+     script stayed one file but moved to the repo root, writes
+     `games/<session date>/<game>/{analysis.json, timeline.txt}` per game (session = evening,
+     06:00 cutoff), has `site` and `install-skill`, and its skill now writes `coaching.md` per
+     game and per session so its page fills in. Two pages, cross-linked in the sidebar.
    - **Fire test, session 2 again, 2026-10-15,** with per-game writer subagents: 44 subagents
      (40 readers, 4 writers), 17.9 min, $53.48. No faster than the first session-2 run (17.7 min).
      Why: about 20 subagents can run at once (4 launches were refused with a concurrency error and

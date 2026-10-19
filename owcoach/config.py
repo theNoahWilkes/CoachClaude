@@ -1,7 +1,8 @@
 """Where everything lives: one config file, a per-player profile, a per-recording library.
 
   ~/.config/coachclaude/config.json      {"ow": {"player", "captures": [...], "library", "profile", "tesseract"}}
-  <profile>                              per player, small: profile.json, nameplate.png, portraits.npz,
+                                         (coachlib.config owns the file; the HotS coach has its own section)
+  <profile>                             per player, small: profile.json, nameplate.png, portraits.npz,
                                          hud_layouts.json, history.sqlite, lessons.md, focus_proposal*.md, heroes/
   <library>/.cache/<recording stem>/     the scan cache (thumbnails, matches.json, events.json, hud.json)
   <library>/<session>/mNN_result_mode_map/{match.mp4, match.json, packet/...}
@@ -16,31 +17,13 @@ Env overrides: COACHCLAUDE_CONFIG (the file), OWCOACH_PROFILE, OWCOACH_LIBRARY.
 """
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
+from coachlib.config import config_path, data_dir, load, save  # noqa: F401  (the file is shared with the HotS coach)
+
 SESSION_PREFIX = "Overwatch 2 "        # ShadowPlay names recordings "Overwatch 2 <date> - <time>.<n>"
 CAPTURE_DEFAULTS = ("Videos/NVIDIA/Overwatch 2",)
-
-
-def config_path() -> Path:
-    return Path(os.environ.get("COACHCLAUDE_CONFIG") or Path.home() / ".config" / "coachclaude" / "config.json")
-
-
-def load() -> dict:
-    p = config_path()
-    try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-
-
-def save(cfg: dict) -> Path:
-    p = config_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(cfg, indent=1), encoding="utf-8")
-    return p
 
 
 def ow() -> dict:
@@ -48,8 +31,7 @@ def ow() -> dict:
 
 
 def profile_dir() -> Path:
-    return Path(os.environ.get("OWCOACH_PROFILE") or ow().get("profile")
-                or Path.home() / ".local" / "share" / "coachclaude" / "ow")
+    return Path(os.environ.get("OWCOACH_PROFILE") or ow().get("profile") or data_dir("ow"))
 
 
 def library() -> Path:

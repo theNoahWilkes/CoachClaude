@@ -5,28 +5,36 @@
 #   "mpyq>=0.2.5",
 #   "six>=1.14",
 #   "heroprotocol @ git+https://github.com/Blizzard/heroprotocol",
+#   "markdown-it-py>=3",
 # ]
 # ///
 """hotscoach - rule-based post-game coach for Heroes of the Storm replays.
 
 First run:
-  hotscoach.py setup        finds your replays, detects your name, writes config
+  hotscoach setup           finds your replays, detects your name, writes config
 
 Usage:
-  hotscoach.py analyze REPLAY [--json]
-  hotscoach.py batch [DIR] [--new-only]
-  hotscoach.py trend [--last N] [--hero HERO]
-  hotscoach.py timeline REPLAY
-  hotscoach.py positions REPLAY --start M:SS --end M:SS
+  hotscoach analyze REPLAY [--json]
+  hotscoach batch [DIR] [--new-only]
+  hotscoach trend [--last N] [--hero HERO]
+  hotscoach timeline REPLAY
+  hotscoach positions REPLAY --start M:SS --end M:SS
+  hotscoach site [--open]           the page over every game: <data>/coaching.html
   (any command accepts --player NAME to override the configured player)
 
-Dependencies: pip install -r requirements.txt  (or run with `uv run`, which reads the
-header above). Config: ~/.config/hotscoach/config.json. Env vars HOTS_PLAYER,
-HOTS_REPLAY_DIR, HEROPROTOCOL_PATH and HOTSCOACH_DB override it.
+Installed with `pip install "coachclaude[hots]"` the command is `hotscoach`; from a clone it is
+`uv run hotscoach.py ...` (uv reads the header above) or `python hotscoach.py ...`.
+
+Config: the "hots" section of ~/.config/coachclaude/config.json (shared with the Overwatch
+coach; an old ~/.config/hotscoach/config.json is read and migrated by `setup`). Data:
+~/.local/share/coachclaude/hots/ (games.db, lessons-<player>.md, games/<session>/<game>/ with
+analysis.json, timeline.txt and the coach's coaching.md, coaching.html). Env vars HOTS_PLAYER,
+HOTS_REPLAY_DIR, HEROPROTOCOL_PATH, HOTSCOACH_DB and HOTSCOACH_DATA override it.
 """
-import argparse, glob, hashlib, importlib.util, json, math, os, re, sqlite3, sys
+import argparse, glob, hashlib, importlib.util, io, json, math, os, re, sqlite3, sys
 from collections import Counter
 from collections import defaultdict
+from contextlib import redirect_stdout
 
 # ---------------------------------------------------------------- tunables
 TANK_FAR = 30          # units: "your frontline was far away"
@@ -70,7 +78,7 @@ def _versions_dir():
     if os.path.isdir(clone):
         sys.path.insert(0, clone)
         return os.path.join(clone, "heroprotocol", "versions")
-    sys.exit("heroprotocol not found: run `pip install -r requirements.txt` "
+    sys.exit("heroprotocol not found: run `pip install \"coachclaude[hots]\"` from the repo "
              "(or `uv run hotscoach.py ...`)")
 
 
@@ -96,20 +104,45 @@ def load_protocol(build=None):
 
 
 # ---------------------------------------------------------------- config
-CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
-DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
+# One file for both coaches (coachlib.config owns it): {"hots": {...}, "ow": {...}}. The loader
+# is duplicated here in a few lines so the script still runs on its own under `uv run`.
+CONFIG_PATH = os.environ.get("COACHCLAUDE_CONFIG") or os.path.expanduser("~/.config/coachclaude/config.json")
+OLD_CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
+DATA_DIR = os.environ.get("HOTSCOACH_DATA") or os.path.expanduser("~/.local/share/coachclaude/hots")
+OLD_DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def load_config():
+def _read_json(path):
     try:
-        with open(CONFIG_PATH) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, ValueError):
         return {}
 
 
+def load_config():
+    """The "hots" section; falls back to the pre-merge file so old installs keep working until setup."""
+    sec = _read_json(CONFIG_PATH).get("hots")
+    if sec is None and os.path.exists(OLD_CONFIG_PATH):
+        return _read_json(OLD_CONFIG_PATH)
+    return sec or {}
+
+
+def save_config(sec):
+    cfg = _read_json(CONFIG_PATH)
+    cfg["hots"] = sec
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=1)
+
+
 def configured(key, env):
     return os.environ.get(env) or load_config().get(key)
+
+
+def games_dir():
+    return os.path.join(DATA_DIR, "games")
 
 
 def candidate_replay_roots():
@@ -463,17 +496,69 @@ def print_report(m, deaths, notes):
         print(f"  * {n}")
 
 
+def analysis_dict(g, m, deaths, notes):
+    return dict(metrics=m, deaths=deaths, notes=notes,
+                teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy") for p in g.players},
+                objectives=[(fmt(t), n) for t, n in g.objectives],
+                camps=[(fmt(t), camp, "us" if team == g.me["team"] else "them") for t, camp, team in g.camps],
+                structures=[(fmt(t), kind, "us" if team == g.me["team"] else "them") for t, kind, team in g.structures],
+                levels={f"{team}:{lvl}": fmt(t) for (team, lvl), t in g.levels.items()},
+                replay=os.path.basename(g.path), id=replay_id(g.path))
+
+
+def session_date(played):
+    """'2026-10-17 00.52' -> '2026-10-16': games before 06:00 belong to the evening before."""
+    import datetime as _dt
+    try:
+        d = _dt.datetime.strptime(played[:16], "%Y-%m-%d %H.%M")
+    except ValueError:
+        return played[:10]
+    if d.hour < 6:
+        d -= _dt.timedelta(days=1)
+    return d.strftime("%Y-%m-%d")
+
+
+def game_dir(path, m):
+    """<data>/games/<session date>/<YYYY-MM-DD HH.MM>_<map>_<hero>: analysis.json, timeline.txt, coaching.md."""
+    played = os.path.basename(path)[:16]
+    name = f"{played}_{norm(m['map'])}_{norm(m['hero'])}"
+    return os.path.join(games_dir(), session_date(played), name)
+
+
+def write_game_files(g, m, deaths, notes):
+    """The per-game folder the coach writes coaching.md into and the page reads. Idempotent."""
+    d = game_dir(g.path, m)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "analysis.json"), "w", encoding="utf-8") as f:
+        json.dump(analysis_dict(g, m, deaths, notes), f, indent=1)
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        print_timeline(g)
+    with open(os.path.join(d, "timeline.txt"), "w", encoding="utf-8") as f:
+        f.write(buf.getvalue())
+    return d
+
+
+def rebuild_site(quiet=True):
+    try:
+        out = build_site()
+        if not quiet:
+            print(f"page: {out}")
+    except Exception as e:            # the page is a convenience; the files are already on disk
+        print(f"page not rebuilt: {e}", file=sys.stderr)
+
+
 def cmd_analyze(a):
     g = Game(a.replay, a.player)
     m, deaths, notes = analyze(g)
     save(db(), a.replay, m)
+    d = write_game_files(g, m, deaths, notes)
     if a.json:
-        print(json.dumps(dict(metrics=m, deaths=deaths, notes=notes,
-                              teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy")
-                                     for p in g.players},
-                              objectives=[(fmt(t), n) for t, n in g.objectives]), indent=1))
+        print(json.dumps(analysis_dict(g, m, deaths, notes), indent=1))
     else:
         print_report(m, deaths, notes)
+        print(f"files: {d}")
+    rebuild_site()
 
 
 def cmd_batch(a):
@@ -481,8 +566,9 @@ def cmd_batch(a):
     seen = {r[0] for r in con.execute("SELECT id FROM games")}
     root = a.dir or configured("replay_dir", "HOTS_REPLAY_DIR")
     if not root:
-        sys.exit("no replay folder: pass DIR or run `hotscoach.py setup`")
+        sys.exit("no replay folder: pass DIR or run `hotscoach setup`")
     files = find_replays(root)
+    n = 0
     for f in files:
         if a.new_only and replay_id(f) in seen:
             continue
@@ -492,7 +578,16 @@ def cmd_batch(a):
             print(f"skip {os.path.basename(f)}: {e}", file=sys.stderr); continue
         m, deaths, notes = analyze(g)
         save(con, f, m)
-        print_report(m, deaths, notes)
+        d = write_game_files(g, m, deaths, notes)
+        n += 1
+        if a.quiet:
+            print(f"{os.path.basename(f)} -> {d}")
+        else:
+            print_report(m, deaths, notes)
+            print(f"files: {d}")
+    if not n:
+        print("nothing new")
+    rebuild_site()
 
 
 def cmd_trend(a):
@@ -524,7 +619,10 @@ def side_label(g, x):
 
 
 def cmd_timeline(a):
-    g = Game(a.replay, a.player)
+    print_timeline(Game(a.replay, a.player))
+
+
+def print_timeline(g):
     mt = g.me["team"]
     who = lambda p: ("YOU " if p is g.me else "") + p["hero"]
     print(f"== {g.map} ({fmt(g.length)}) - {'WIN' if g.me['win'] else 'LOSS'} ==")
@@ -636,22 +734,182 @@ def cmd_setup(a):
     else:
         print(f"  [ok] player: {player}")
 
-    # 4. save config + lessons file
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    # 4. save config + lessons file (moving a pre-merge install's config and data into place)
     cfg.update(player=player, replay_dir=root)
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    save_config(cfg)
     print(f"  [ok] config: {CONFIG_PATH}")
+    if os.path.exists(OLD_CONFIG_PATH):
+        os.replace(OLD_CONFIG_PATH, OLD_CONFIG_PATH + ".migrated")
+        print(f"       (old {OLD_CONFIG_PATH} renamed .migrated)")
     os.makedirs(DATA_DIR, exist_ok=True)
+    if os.path.isdir(OLD_DATA_DIR) and os.path.abspath(OLD_DATA_DIR) != os.path.abspath(DATA_DIR):
+        import shutil
+        for name in os.listdir(OLD_DATA_DIR):
+            dst = os.path.join(DATA_DIR, name)
+            if not os.path.exists(dst):
+                shutil.move(os.path.join(OLD_DATA_DIR, name), dst)
+                print(f"  [ok] moved {name} from {OLD_DATA_DIR}")
+        if not os.listdir(OLD_DATA_DIR):
+            os.rmdir(OLD_DATA_DIR)
     lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
     if not os.path.exists(lessons):
-        tmpl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                            "references", "lessons-template.md")
-        text = open(tmpl).read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
-        with open(lessons, "w") as f:
+        tmpl = os.path.join(REPO_DIR, ".claude", "skills", "hots-coach", "references", "lessons-template.md")
+        text = open(tmpl, encoding="utf-8").read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
+        with open(lessons, "w", encoding="utf-8") as f:
             f.write(text.replace("<player>", player))
     print(f"  [ok] lessons: {lessons}")
-    print("\nDone. Try: hotscoach.py batch --new-only   or, in Claude Code: coach my last game")
+    print("\nDone. Try: hotscoach batch --new-only   or, in Claude Code: coach my last game")
+
+
+# ---------------------------------------------------------------- the page
+def _hots_tree():
+    """The games folder as the tree coachlib.site renders (same shape as the Overwatch page)."""
+    from urllib.parse import quote
+    from coachlib.site import num, slug
+    player = configured("player", "HOTS_PLAYER") or ""
+    root = games_dir()
+    rel = lambda p: quote(os.path.relpath(p, DATA_DIR).replace(os.sep, "/"), safe="/")
+    sec = lambda s: int(s.split(":")[0]) * 60 + int(s.split(":")[1]) if s and ":" in s else None
+    days = []
+    dates = sorted((d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))), reverse=True) if os.path.isdir(root) else []
+    for date in dates:
+        sdir = os.path.join(root, date)
+        summary = None
+        if os.path.exists(os.path.join(sdir, "coaching.md")):
+            summary = open(os.path.join(sdir, "coaching.md"), encoding="utf-8").read()
+        s = {"id": slug(date), "label": date, "date": date, "kind": "session", "games": [], "tables": [],
+             "title": f"Session {date}", "summary_md": summary, "nav_label": f"session {date}",
+             "sub": f'<a href="{rel(sdir)}" target="_blank">folder</a>'}
+        for gname in sorted(d for d in os.listdir(sdir) if os.path.isdir(os.path.join(sdir, d))):
+            gdir = os.path.join(sdir, gname)
+            an = _read_json(os.path.join(gdir, "analysis.json"))
+            if not an:
+                continue
+            m = an["metrics"]
+            res = "win" if m.get("win") else "loss"
+            coached = os.path.exists(os.path.join(gdir, "coaching.md"))
+            played = gname[:16].replace(".", ":")
+            gid = f"{s['id']}--{slug(gname)}"
+            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}",
+                 "result": res, "coached": coached, "processed": True,
+                 "sub": f"{played} · {fmt(m['length'])} · replay {an.get('replay', '')} · " + f'<a href="{rel(gdir)}" target="_blank">folder</a>',
+                 "cells": {"played": played, "map": {"text": m["map"], "href": f"#g/{gid}"},
+                           "result": {"text": res, "cls": f"res-{res}"}, "hero": m["hero"], "length": fmt(m["length"]),
+                           "deaths": num(m.get("deaths")), "dead_pct": num(m.get("pct_dead"), 1), "kp": num(m.get("kp")),
+                           "healing": num(m.get("healing")), "hero_damage": num(m.get("hero_damage")), "coached": "✓" if coached else ""},
+                 "warnings": [] if coached else ["Not coached yet. The hots-coach skill writes coaching.md here when it coaches the game."],
+                 "tables": [{"header": ["", "value"], "rows": [
+                     ["Deaths", num(m.get("deaths"))], ["Time dead", f"{fmt(m.get('time_dead') or 0)} ({num(m.get('pct_dead'), 1)} %)"],
+                     ["Kill participation", f"{num(m.get('kp'))} %"], ["Healing", num(m.get("healing"))],
+                     ["Teamfight healing", f"{num(m.get('teamfight_healing'))} ({num(m.get('tf_heal_pct'))} %)"],
+                     ["Clutch heals", num(m.get("clutch_heals"))], ["Hero damage", num(m.get("hero_damage"))],
+                     ["Damage taken", num(m.get("damage_taken"))], ["XP contribution", num(m.get("xp"))],
+                     ["Flags", f"first to die {m.get('first_deaths')} · picked off {m.get('picked_off')} · enemy half {m.get('enemy_half')} · "
+                               f"far from front {m.get('far_from_front')} · absent from lost fights {m.get('absent_fights', 0)}"]]}],
+                 "images": [], "links": [], "moments": [], "details": [],
+                 "timeline": {"duration": m.get("length") or 0, "ticks": 300,
+                              "deaths": [{"id": f"d{i + 1:02d}", "t": sec(d["t"]), "label": f"d{i + 1:02d} death {d['t']} <- {d['killers']}"}
+                                         for i, d in enumerate(an.get("deaths") or []) if sec(d["t"]) is not None],
+                              "marks": [{"t": sec(t), "lane": "top", "cls": "tl-obj", "label": f"{t} {n}"} for t, n in an.get("objectives") or [] if sec(t) is not None]
+                                       + [{"t": sec(t), "lane": "bottom", "cls": "tl-camp" if who == "us" else "tl-struct", "label": f"{t} camp {c} -> {who}"}
+                                          for t, c, who in an.get("camps") or [] if sec(t) is not None],
+                              "spans": []}}
+            if coached:
+                g["report_md"] = open(os.path.join(gdir, "coaching.md"), encoding="utf-8").read()
+            for i, d in enumerate(an.get("deaths") or []):
+                g["moments"].append({"id": f"d{i + 1:02d}", "kind": "death", "clock": d["t"], "video_t": None,
+                                     "title": f"d{i + 1:02d} {d['t']} · killed by {d['killers']}", "flags": d.get("flags") or [], "stills": [], "details": []})
+            if an.get("objectives"):
+                g["details"].append({"summary": f"Objectives ({len(an['objectives'])})", "pre": "\n".join(f"{t:>6}  {n}" for t, n in an["objectives"])})
+            if an.get("notes"):
+                g["details"].append({"summary": "Rule notes (from the script)", "html": "<ul>" + "".join(f"<li>{n}</li>" for n in an["notes"]) + "</ul>"})
+            tl = os.path.join(gdir, "timeline.txt")
+            if os.path.exists(tl):
+                g["details"].append({"summary": "Timeline (levels, XP by source, every death, objective, camp and structure)",
+                                     "pre": open(tl, encoding="utf-8").read()})
+            s["games"].append(g)
+        n = len(s["games"])
+        s["nav"] = f"{date} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
+        if not summary and n > 1:
+            s["warn"] = "No session summary yet."
+        days.append({"date": date, "sessions": [s], "combined": []})
+    allg = [g for d in days for s in d["sessions"] for g in s["games"]]
+    tables = []
+    try:      # per-hero table from the game log: every game ever logged, not only the ones with folders
+        ms = [json.loads(r[0]) for r in db().execute("SELECT metrics FROM games ORDER BY played").fetchall()]
+        by = defaultdict(list)
+        for m in ms:
+            by[m["hero"]].append(m)
+        avg = lambda xs, k: sum(x.get(k) or 0 for x in xs) / len(xs)
+        tables.append({"title": "Per hero, every logged game", "header": ["hero", "games", "W-L", "deaths", "dead %", "KP %", "healing"],
+                       "rows": [[h, str(len(xs)), f"{sum(x['win'] for x in xs)}-{sum(not x['win'] for x in xs)}", num(avg(xs, 'deaths'), 1),
+                                 num(avg(xs, 'pct_dead'), 1), num(avg(xs, 'kp')), num(avg(xs, 'healing'))]
+                                for h, xs in sorted(by.items(), key=lambda kv: -len(kv[1]))]})
+    except Exception:
+        pass
+    lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
+    lessons_md = open(lessons, encoding="utf-8").read() if os.path.exists(lessons) else None
+    other = None
+    ow = _read_json(CONFIG_PATH).get("ow") or {}
+    ow_page = os.path.join(ow.get("library") or os.path.expanduser("~/Videos/owcoach"), "coaching.html")
+    if os.path.exists(ow_page):
+        from pathlib import Path
+        other = {"title": "Overwatch 2", "href": Path(ow_page).as_uri()}
+    import datetime as _dt
+    return {"app": "hotscoach", "player": player, "title": f"{player} · Heroes of the Storm", "nav_home": f"{player} · all games",
+            "home_title": f"{player} · Heroes of the Storm coaching",
+            "home_sub": f"{len(allg)} games in {len(days)} sessions, {sum(1 for g in allg if g['coached'])} coached · data <code>{DATA_DIR}</code> · "
+                        f"built {_dt.datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "columns": [{"key": "played", "label": "played", "align": "left"}, {"key": "map", "label": "map", "align": "left"},
+                        {"key": "result", "label": "result", "align": "left"}, {"key": "hero", "label": "hero", "align": "left"},
+                        {"key": "length", "label": "length"}, {"key": "deaths", "label": "deaths"}, {"key": "dead_pct", "label": "dead %"},
+                        {"key": "kp", "label": "KP %"}, {"key": "healing", "label": "healing"}, {"key": "hero_damage", "label": "hero dmg"},
+                        {"key": "coached", "label": "coached"}],
+            "days": days, "pages": [{"id": "lessons", "title": "Lessons", "md": lessons_md}], "tables": tables,
+            "notes": ["Numbers come from the replay's tracker events (hotscoach analyze); reports are the coach's text, unedited.",
+                      "A session is one evening: games before 06:00 count to the day before."],
+            "other": other, "generated": _dt.datetime.now().isoformat(timespec="minutes")}
+
+
+def build_site(out=None):
+    if REPO_DIR not in sys.path:
+        sys.path.insert(0, REPO_DIR)          # `import coachlib` from a clone, without pip install
+    from coachlib.site import write
+    return write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+
+
+def cmd_site(a):
+    out = build_site(a.out)
+    print(f"site: {out}")
+    if a.open:
+        import webbrowser
+        webbrowser.open(out.as_uri())
+
+
+def cmd_install_skill(a):
+    """Link both skills into ~/.claude/skills (a junction on Windows)."""
+    import subprocess
+    home = os.path.join(os.path.expanduser("~"), ".claude", "skills")
+    os.makedirs(home, exist_ok=True)
+    for name in ("hots-coach", "ow-coach"):
+        src = os.path.join(REPO_DIR, ".claude", "skills", name)
+        dst = os.path.join(home, name)
+        if not os.path.isdir(src):
+            continue
+        is_link = os.path.islink(dst) or (os.path.isdir(dst) and os.path.realpath(dst) != os.path.abspath(dst))
+        if is_link:
+            if os.path.realpath(dst) == os.path.realpath(src):
+                print(f"already linked: {dst}")
+                continue
+            os.rmdir(dst) if sys.platform == "win32" else os.unlink(dst)
+        elif os.path.exists(dst):
+            print(f"{dst} is a real folder, not a link: move it away and rerun")
+            continue
+        if sys.platform == "win32":
+            subprocess.run(["cmd", "/c", "mklink", "/J", dst, src], check=True, capture_output=True)
+        else:
+            os.symlink(src, dst, target_is_directory=True)
+        print(f"linked {dst} -> {src}")
 
 
 def main():
@@ -660,7 +918,12 @@ def main():
     p = sub.add_parser("analyze"); p.add_argument("replay"); p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_analyze)
     p = sub.add_parser("batch"); p.add_argument("dir", nargs="?"); p.add_argument("--new-only", action="store_true")
+    p.add_argument("--quiet", action="store_true", help="one line per game instead of the report")
     p.set_defaults(fn=cmd_batch)
+    p = sub.add_parser("site", help="rebuild <data>/coaching.html, the page over every game")
+    p.add_argument("--out"); p.add_argument("--open", action="store_true"); p.set_defaults(fn=cmd_site)
+    p = sub.add_parser("install-skill", help="link the hots-coach and ow-coach skills into ~/.claude/skills")
+    p.set_defaults(fn=cmd_install_skill)
     p = sub.add_parser("timeline"); p.add_argument("replay"); p.set_defaults(fn=cmd_timeline)
     p = sub.add_parser("positions"); p.add_argument("replay")
     p.add_argument("--start", required=True); p.add_argument("--end", required=True)
@@ -674,7 +937,7 @@ def main():
         sub.choices[name].add_argument("--player", default=configured("player", "HOTS_PLAYER"))
     a = ap.parse_args()
     if a.cmd in ("analyze", "batch", "timeline", "positions") and not a.player:
-        sys.exit("no player configured: run `hotscoach.py setup` (or pass --player)")
+        sys.exit("no player configured: run `hotscoach setup` (or pass --player)")
     a.fn(a)
 
 

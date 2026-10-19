@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -347,17 +348,36 @@ def cmd_install_skill(a):
     import subprocess
     import sys
     from .config import repo_dir
-    src = repo_dir() / ".claude" / "skills" / "ow-coach"
-    dst = Path.home() / ".claude" / "skills" / "ow-coach"
-    if dst.exists() or dst.is_symlink():
-        print(f"already present: {dst}")
-        return
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    if sys.platform == "win32":
-        subprocess.run(["cmd", "/c", "mklink", "/J", str(dst), str(src)], check=True)
-    else:
-        dst.symlink_to(src, target_is_directory=True)
-    print(f"linked {dst} -> {src}")
+    for name in ("ow-coach", "hots-coach"):
+        src = repo_dir() / ".claude" / "skills" / name
+        dst = Path.home() / ".claude" / "skills" / name
+        if not src.is_dir():
+            continue
+        if dst.is_symlink() or (dst.exists() and os.path.islink(dst)) or _is_junction(dst):
+            if dst.resolve() == src.resolve():
+                print(f"already linked: {dst}")
+                continue
+            os.rmdir(dst) if sys.platform == "win32" else dst.unlink()     # a junction/link, not the folder
+        elif dst.exists():
+            print(f"{dst} is a real folder, not a link: move it away and rerun")
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if sys.platform == "win32":
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(dst), str(src)], check=True, capture_output=True)
+        else:
+            dst.symlink_to(src, target_is_directory=True)
+        print(f"linked {dst} -> {src}")
+
+
+def _is_junction(p: Path) -> bool:
+    try:
+        return p.is_junction()          # Python 3.12+
+    except AttributeError:
+        import stat
+        try:
+            return bool(os.lstat(p).st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        except (OSError, AttributeError):
+            return False
 
 
 def main(argv=None):
@@ -496,7 +516,7 @@ def main(argv=None):
     s.add_argument("--rewrite-only", action="store_true", help="only make the stored paths relative")
     s.set_defaults(fn=cmd_migrate, needs_tools=False)
 
-    s = sub.add_parser("install-skill", help="link the ow-coach skill into ~/.claude/skills")
+    s = sub.add_parser("install-skill", help="link the ow-coach and hots-coach skills into ~/.claude/skills")
     s.set_defaults(fn=cmd_install_skill, needs_tools=False)
 
     a = p.parse_args(argv)

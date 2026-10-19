@@ -18,7 +18,7 @@ write it and say in chat and at the end of `<session>/coaching.md` that it's wai
 
 ## Where and shape
 
-`focus_proposal.md` in the profile dir (`python -m owcoach config profile`). Exactly this
+`focus_proposal.md` in the profile dir (`owcoach config profile`). Exactly this
 shape, since `owcoach focus` parses it:
 
 ```
@@ -62,7 +62,7 @@ Rules:
 
 Use AskUserQuestion with one option per proposal entry (label = the title, description = the
 wording and the one-line evidence), multi-select, with the current focus first. "Other" is their
-own wording. Then run `python -m owcoach focus N [N]` (or `--set "..."`) from the repo root and
+own wording. Then run `owcoach focus N [N]` (or `--set "..."`) from the repo root and
 show the resulting "Current focus" section. Don't edit the lessons file's focus by hand.
 
 ## Reading a pending proposal (start of a session)

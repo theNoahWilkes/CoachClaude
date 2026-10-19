@@ -16,10 +16,11 @@ if something is missing from the packet that the pipeline could extract, say so 
 
 ## 0. Where things are
 
-- Code: the repo containing this skill (`owcoach/` package; run as `python -m owcoach ...` from
-  the repo root). `HANDOFF.md` there documents every stage and its known limits.
-- Paths come from the config, never from guesses: `python -m owcoach config` prints them all,
-  `python -m owcoach config profile` one of them. The **profile** (per player: `profile.json`
+- Code: the CoachClaude repo containing this skill (`owcoach/` package, installed as the
+  `owcoach` command; `python -m owcoach ...` from the repo root does the same). Its
+  `docs/ow/HANDOFF.md` documents every stage and its known limits.
+- Paths come from the config, never from guesses: `owcoach config` prints them all,
+  `owcoach config profile` one of them. The **profile** (per player: `profile.json`
   with the player's name, `lessons.md`, `focus_proposal.md`, `heroes/`, `history.sqlite`) and the
   **library** (per recording: `<library>/<session>/<mNN_result_mode_map>/` with `match.mp4` and
   `packet/` holding `packet.json`, `facts/`, `frames/`, the scoreboard/summary/rank screenshots
@@ -28,21 +29,21 @@ if something is missing from the packet that the pipeline could extract, say so 
 
 ## 1. How the player asks, and finding the games
 
-- "Coach last night's games" / "tonight" / "my new games" → `python -m owcoach new` lists the
+- "Coach last night's games" / "tonight" / "my new games" → `owcoach new` lists the
   recordings not yet in the library. Tell the player what will be coached and roughly what it
   costs (about $6 a game, several minutes each), then run
-  `python -m owcoach coach --new --yes` in the background. It does every local stage, then one
+  `owcoach coach --new --yes` in the background. It does every local stage, then one
   `claude -p` process per game in parallel and one summary (section 6); several one-game
   recordings from one evening get one combined summary. When it's done, read the summary
   `coaching.md` it names and the focus proposal, give the short version in chat, and name
   `<library>/coaching.html` (rebuilt by the driver): every session, game, report, still and clip
   in one page. Don't coach a multi-game session in this process: the fan-out hits the subagent
   limit (section 3).
-- "Show me the reports" / "open the coaching" → `python -m owcoach site --open`.
-- A session name (`2026.10.16 - 22.23.04.03`) or folder → `python -m owcoach coach "<session>" --yes`.
+- "Show me the reports" / "open the coaching" → `owcoach site --open`.
+- A session name (`2026.10.16 - 22.23.04.03`) or folder → `owcoach coach "<session>" --yes`.
 - A single game folder or `packet.json` named explicitly → that game, which you may coach here,
   in this process, as sections 2 to 5 describe.
-- A recording with no session yet and no coaching wanted: `python -m owcoach run "<stem>"`
+- A recording with no session yet and no coaching wanted: `owcoach run "<stem>"`
   (about 2 to 4 min per recording). If it says there's no profile, the player runs
   `owcoach setup --from "<recording>"` once; relay that.
 
@@ -99,11 +100,11 @@ games). `references/subagents.md` has the numbers.
    the player, rarely (a new hero, a rework). If a hero newer than your training data has no
    note and it limited the coaching, say so in the report and suggest `owcoach hero <Name>`.
 
-   Before you launch, run `python -m owcoach trend --role support --json` (from the repo root)
+   Before you launch, run `owcoach trend --role support --json` (from the repo root)
    for the player's recent games vs their baseline, and save its output to
    `<session>/trend.json` for the writers. Add `--hero NAME` when most of a game was one hero and
    there's enough history on it.
-4. As soon as all of one game's readers have replied, run `python -m owcoach notes "<game dir>"`
+4. As soon as all of one game's readers have replied, run `owcoach notes "<game dir>"`
    (it concatenates the notes into `notes/all.md`) and launch that game's writer (the writer
    brief in `references/subagents.md`). Don't wait for the other games. A game whose `coaching.md` and
    `notes/summary.md` are newer than all its notes is already written; skip it.
@@ -182,12 +183,12 @@ After coaching, update `lessons.md` in the profile dir:
 Then write the focus proposal to `focus_proposal.md` in the profile dir as `references/focus-proposal.md`
 says: option 1 keeps the current focus verbatim with its grades; two to four more come from the
 patterns, each with its evidence. Interactive: ask the player to pick (AskUserQuestion), apply
-with `python -m owcoach focus N [N]` from the repo root, and show the new "Current focus".
+with `owcoach focus N [N]` from the repo root, and show the new "Current focus".
 Headless: say the proposal is waiting, in chat and at the end of `<session>/coaching.md`.
 
 ## 6. Per-game processes
 
-`python -m owcoach coach "<session>"` (the driver; `scripts/coach_session.sh` is a wrapper for
+`owcoach coach "<session>"` (the driver; `scripts/coach_session.sh` is a wrapper for
 it) coaches a session as one `claude -p` process per game, in parallel, then one for the
 session summary and the lessons. It's the fast way: one
 session fanning out every game's readers hits the limit on concurrent subagents, and a game's
@@ -206,4 +207,4 @@ everything itself for one game, and asks instead.
 If the stills contradict the packet (a death that isn't one, a wrong killer, a missed kill cam,
 a wrong hero), say so in the coaching and list it under "Pipeline issues" at the end of
 `coaching.md`, with the id and what you saw. Don't patch the pipeline unless the user asks;
-the fix belongs in the deterministic stage that produced it (see `HANDOFF.md`).
+the fix belongs in the deterministic stage that produced it (see `docs/ow/HANDOFF.md`).
