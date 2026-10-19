@@ -762,12 +762,122 @@ def cmd_setup(a):
 
 
 # ---------------------------------------------------------------- the page
+# The lessons file is the coach's permanent record: its "Session log" bullets are dated
+# takeaways per game or evening, and its pattern bullets cite games as "<Map> MM-DD [H:MM]".
+# The page shows those on the games they are about, so a game coached before reports were
+# written to disk still carries its notes.
+MAP_ALIASES = {        # map -> (case-insensitive names..., CASE-SENSITIVE short forms...)
+    "Cursed Hollow": (["cursed hollow"], ["CH"]), "Haunted Mines": (["haunted mines"], ["HM"]),
+    "Towers of Doom": (["towers of doom", "towers"], ["ToD"]), "Battlefield of Eternity": (["battlefield of eternity"], ["BoE"]),
+    "Blackheart's Bay": (["blackheart's bay", "blackheart", "bay"], []), "Infernal Shrines": (["infernal shrines"], ["IS"]),
+    "Garden of Terror": (["garden of terror", "garden"], []), "Tomb of the Spider Queen": (["tomb of the spider queen", "spider queen", "tomb"], []),
+    "Warhead Junction": (["warhead junction", "warhead"], []), "Dragon Shire": (["dragon shire"], []), "Sky Temple": (["sky temple"], []),
+    "Volskaya Foundry": (["volskaya foundry", "volskaya"], []), "Alterac Pass": (["alterac pass", "alterac"], []),
+    "Hanamura Temple": (["hanamura temple", "hanamura"], []), "Braxis Holdout": (["braxis holdout", "braxis"], []),
+    "Silver City": (["silver city"], []), "Industrial District": (["industrial district"], []), "Lost Cavern": (["lost cavern"], []),
+    "Braxis Outpost": (["braxis outpost"], []),
+}
+
+
+def _alias_re(map_name):
+    ci, cs = MAP_ALIASES.get(map_name, ([map_name.lower()], []))
+    parts = [r"(?i:" + re.escape(a) + ")" for a in ci] + [re.escape(a) for a in cs]
+    return r"\b(?:" + "|".join(parts) + r")\b"
+
+
+def _mentions_any_map(text, exclude):
+    for m, (ci, cs) in MAP_ALIASES.items():
+        if m == exclude:
+            continue
+        if re.search(_alias_re(m), text):
+            return True
+    return False
+
+
+def lessons_notes(text):
+    """-> (session_log, patterns): bullets of the Session log with their date range, and the
+    bullets of every other section with their heading. Continuation lines stay with their bullet."""
+    section, bullets = None, []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip()
+            continue
+        if section is None or line.startswith("<!--"):
+            continue
+        if line.startswith("- "):
+            bullets.append([section, line[2:].strip()])
+        elif line.strip() and bullets and bullets[-1][0] == section:
+            bullets[-1][1] += " " + line.strip()
+    log, patterns = [], []
+    for section, b in bullets:
+        if section.lower().startswith("session log"):
+            m = re.match(r"(\d{4}-\d{2}-\d{2})(?:/(\d{2}))?(?:\s+to\s+(\d{4}-\d{2}-\d{2}))?", b)
+            if not m:
+                continue
+            start = m.group(1)
+            end = m.group(3) or (start[:8] + m.group(2) if m.group(2) else start)
+            log.append({"start": start, "end": end, "text": b})
+        else:
+            patterns.append({"section": section, "text": b})
+    return log, patterns
+
+
+def notes_for_game(log, patterns, map_name, play_date, session_date, length_s=None, start="", siblings=()):
+    """The lessons bullets about one game: log entries whose range covers it and that name its
+    map (or no map at all), and pattern bullets citing '<map alias> MM-DD'. Two games on one
+    map in one evening are told apart by the length in '(Map, Hero, M:SS)' and by the start
+    time after the citation ('CH 10-09 00:37'); `siblings` = the other games' start times."""
+    alias = _alias_re(map_name)
+    mmdd = {play_date[5:], session_date[5:]}
+    out = []
+    for e in log:
+        if not (e["start"] <= play_date <= e["end"] or e["start"] <= session_date <= e["end"]):
+            continue
+        if re.search(alias, e["text"]):
+            m = re.search(r"\(" + alias + r",[^()]*?(\d+:\d{2})\)", e["text"])
+            if m and length_s is not None:
+                cited = int(m.group(1).split(":")[0]) * 60 + int(m.group(1).split(":")[1])
+                if abs(cited - length_s) > 2:
+                    continue
+            out.append(("Session log", e["text"]))
+        elif not _mentions_any_map(e["text"], None):
+            out.append(("Session log", e["text"]))
+    for p in patterns:
+        hit = False
+        for d in mmdd:
+            for m in re.finditer(alias + r"[^.;]{0,12}?\b(?:\d{4}-)?" + re.escape(d) + r"\b(?:\s+(\d{1,2}:\d{2}))?", p["text"]):
+                t = m.group(1)
+                if t and t != start and t in siblings:
+                    continue          # cites the other game of that map that evening
+                hit = True
+        if hit:
+            out.append((p["section"], p["text"]))
+    return out
+
+
+def notes_md(items):
+    if not items:
+        return None
+    return "\n\n".join(f"**{sec}:** {txt}" for sec, txt in items)
+
+
 def _hots_tree():
     """The games folder as the tree coachlib.site renders (same shape as the Overwatch page)."""
     from urllib.parse import quote
     from coachlib.site import num, slug
     player = configured("player", "HOTS_PLAYER") or ""
     root = games_dir()
+    lessons_path = os.path.join(DATA_DIR, f"lessons-{player}.md")
+    lessons_text = open(lessons_path, encoding="utf-8").read() if os.path.exists(lessons_path) else ""
+    log, patterns = lessons_notes(lessons_text)
+    starts = defaultdict(set)         # (map slug, MM-DD) -> start times, to tell two same-map games apart
+    if os.path.isdir(root):
+        for sd in os.listdir(root):
+            for gn in (os.listdir(os.path.join(root, sd)) if os.path.isdir(os.path.join(root, sd)) else []):
+                parts = gn.split("_")
+                if len(parts) >= 3 and len(parts[0]) >= 16:
+                    for d in {gn[5:10], sd[5:]}:
+                        starts[(parts[1], d)].add(gn[11:16].replace(".", ":"))
     rel = lambda p: quote(os.path.relpath(p, DATA_DIR).replace(os.sep, "/"), safe="/")
     sec = lambda s: int(s.split(":")[0]) * 60 + int(s.split(":")[1]) if s and ":" in s else None
     days = []
@@ -816,6 +926,15 @@ def _hots_tree():
                               "spans": []}}
             if coached:
                 g["report_md"] = open(os.path.join(gdir, "coaching.md"), encoding="utf-8").read()
+            start = gname[11:16].replace(".", ":")
+            sibs = (starts[(norm(m["map"]), gname[5:10])] | starts[(norm(m["map"]), date[5:])]) - {start}
+            notes = notes_md(notes_for_game(log, patterns, m["map"], gname[:10], date, m.get("length"), start, sibs))
+            if notes:
+                g["notes_md"] = notes
+                g["notes_title"] = "From the lessons file (written at the time)"
+                if not coached:
+                    g["warnings"] = []
+                    g["cells"]["coached"] = "notes"
             for i, d in enumerate(an.get("deaths") or []):
                 g["moments"].append({"id": f"d{i + 1:02d}", "kind": "death", "clock": d["t"], "video_t": None,
                                      "title": f"d{i + 1:02d} {d['t']} · killed by {d['killers']}", "flags": d.get("flags") or [], "stills": [], "details": []})
@@ -830,7 +949,12 @@ def _hots_tree():
             s["games"].append(g)
         n = len(s["games"])
         s["nav"] = f"{date} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
-        if not summary and n > 1:
+        covering = [("Session log", e["text"]) for e in log
+                    if any(e["start"] <= d <= e["end"] for d in {date} | {g["dir"][:10] for g in s["games"]})]
+        if covering:
+            s["notes_md"] = notes_md(covering)
+            s["notes_title"] = "From the lessons file (written at the time)"
+        elif not summary and n > 1:
             s["warn"] = "No session summary yet."
         days.append({"date": date, "sessions": [s], "combined": []})
     allg = [g for d in days for s in d["sessions"] for g in s["games"]]
@@ -847,8 +971,7 @@ def _hots_tree():
                                 for h, xs in sorted(by.items(), key=lambda kv: -len(kv[1]))]})
     except Exception:
         pass
-    lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
-    lessons_md = open(lessons, encoding="utf-8").read() if os.path.exists(lessons) else None
+    lessons_md = lessons_text or None
     other = None
     ow = _read_json(CONFIG_PATH).get("ow") or {}
     ow_page = os.path.join(ow.get("library") or os.path.expanduser("~/Videos/owcoach"), "coaching.html")
@@ -858,7 +981,8 @@ def _hots_tree():
     import datetime as _dt
     return {"app": "hotscoach", "player": player, "title": f"{player} · Heroes of the Storm", "nav_home": f"{player} · all games",
             "home_title": f"{player} · Heroes of the Storm coaching",
-            "home_sub": f"{len(allg)} games in {len(days)} sessions, {sum(1 for g in allg if g['coached'])} coached · data <code>{DATA_DIR}</code> · "
+            "home_sub": f"{len(allg)} games in {len(days)} sessions, {sum(1 for g in allg if g['coached'])} with a report, "
+                        f"{sum(1 for g in allg if g.get('notes_md'))} with notes from the lessons file · data <code>{DATA_DIR}</code> · "
                         f"built {_dt.datetime.now().strftime('%Y-%m-%d %H:%M')}",
             "columns": [{"key": "played", "label": "played", "align": "left"}, {"key": "map", "label": "map", "align": "left"},
                         {"key": "result", "label": "result", "align": "left"}, {"key": "hero", "label": "hero", "align": "left"},

@@ -10,7 +10,8 @@ collect_hots) decides the content and hands over this shape:
            tables [table], warn (str)
   game:    id, title, sub (html), result (class suffix), coached, processed, cells {key: str | {text, cls}},
            warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
-           links [{label, href}], report_md, moments [moment], details [detail]
+           links [{label, href}], report_md (+ report_title), notes_md (+ notes_title: a second text
+           block, e.g. what the lessons file says about this game), moments [moment], details [detail]
   table:   title?, header [str], rows [[cell]], align_first? (bool: first column is a row header)
   timeline: duration, deaths [{id, t, to?, label}], spans [{from, to, lane: main|top|bottom, cls, label}],
            marks [{t, lane: top|bottom, cls, label, id?}], ticks (seconds between tick labels)
@@ -172,7 +173,9 @@ def _game(tree: dict, g: dict, s: dict, prev: dict | None, nxt: dict | None) -> 
     elif g.get("links"):
         out.append('<p class="sub">' + " · ".join(f'<a href="{e(l["href"])}" target="_blank">{e(l["label"])}</a>' for l in g["links"]) + "</p>")
     if g.get("report_md"):
-        out.append(f'<h2>Coaching report</h2><div class="md">{md(g["report_md"])}</div>')
+        out.append(f'<h2>{e(g.get("report_title") or "Coaching report")}</h2><div class="md">{md(g["report_md"])}</div>')
+    if g.get("notes_md"):
+        out.append(f'<h2>{e(g.get("notes_title") or "Notes")}</h2><div class="md notes">{md(g["notes_md"])}</div>')
     if g.get("moments"):
         out.append(f'<h2>{e(g.get("moments_title") or "Moments")}</h2>' + "".join(_moment(g, m) for m in g["moments"]))
     for d in g.get("details") or []:
@@ -191,6 +194,8 @@ def _session(tree: dict, s: dict, day: dict) -> str:
         out.append(f'<h2>{e(s.get("summary_title") or "Session summary")}</h2><div class="md">{md(s["summary_md"])}</div>')
     elif s.get("warn"):
         out.append(f'<p class="warn">{e(s["warn"])}</p>')
+    if s.get("notes_md"):
+        out.append(f'<h2>{e(s.get("notes_title") or "Notes")}</h2><div class="md notes">{md(s["notes_md"])}</div>')
     for t in s.get("tables") or []:
         out.append(table_html(t))
     return "".join(out)
@@ -244,6 +249,7 @@ table.games{width:100%}
 .md{max-width:900px}.md table{border-collapse:collapse;font-size:14px}.md th,.md td{border:1px solid var(--line);padding:3px 9px}.md th{color:var(--dim);font-weight:500}
 .md h1{font-size:20px;margin-top:16px}.md h2{font-size:17px;border:0;margin-top:20px}.md h3{font-size:15px;margin-top:14px}.md blockquote{color:var(--dim);border-left:3px solid var(--line);margin:0;padding-left:12px}
 .md pre{background:#101214;padding:8px;overflow:auto}.md code{font-size:13px}
+.md.notes p{border-left:3px solid var(--line);padding-left:12px;margin:8px 0}
 .moment{border:1px solid var(--line);border-left:4px solid var(--red);border-radius:4px;padding:10px 12px;margin:10px 0;background:var(--panel)}
 .moment.ult{border-left-color:var(--acc)}.moment.final_blow{border-left-color:var(--green)}.moment.objective{border-left-color:var(--blue)}.moment.note{border-left-color:var(--dim)}
 .moment h3 small{color:var(--dim);font-weight:400;font-size:13px;margin-left:8px}
