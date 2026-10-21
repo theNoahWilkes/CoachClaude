@@ -41,8 +41,8 @@ The 21:9 crop is auto-detected (`probe.detect_crop`). HDR is tonemapped with
 resolution or aspect), the HUD template and pixel ROIs below **must be recalibrated**: they are
 in 1280-wide, tonemapped, cropped-thumbnail coordinates.
 
-Ask Noah before deleting anything in his Videos folder, re-encoding (stream copy only unless
-asked), or changing his ShadowPlay settings.
+Ask the player before deleting anything in their Videos folder, re-encoding (stream copy only
+unless asked), or changing their ShadowPlay settings.
 
 ## Code layout (`owcoach/`, Python 3.10+, deps: numpy, opencv-python, ffmpeg, tesseract)
 

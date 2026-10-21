@@ -47,9 +47,4 @@ known debt, not precedent. Strike each item when it lands.
       folder names.
 - [ ] User-facing verbs match across `owcoach` and `hotscoach`; Overwatch diagnostics move
       under a developer group.
-- [ ] The lessons-file section is "Session log" in both games (the Overwatch template says
-      "Sessions"), and `.gitignore` covers both lessons file names.
-- [ ] Leftovers: the half-edited sentence in `coachlib/skills/ow-coach/SKILL.md` (~line 101),
-      the stale `scripts/coach_session.sh` reference in that skill, `requires-python` differs
-      between `hotscoach.py` (3.9) and `pyproject.toml` (3.10), and `hotscoach.py` duplicates
-      coachlib's config and dev-mode helpers.
+- [ ] Leftover: `hotscoach.py` duplicates coachlib's config and dev-mode helpers.
