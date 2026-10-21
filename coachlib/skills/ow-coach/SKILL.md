@@ -18,7 +18,7 @@ if something is missing from the packet that the pipeline could extract, say so 
 
 - Code: the `owcoach` package, installed as the `owcoach` command (`python -m owcoach ...`
   from a checkout does the same). This skill ships with it (`coachlib/skills/ow-coach`). The
-  repo's `docs/ow/HANDOFF.md` documents every stage and its known limits.
+  repo's `docs/ow/pipeline.md` documents every stage and its known limits.
 - `owcoach config dev` prints `on` or `off`. **Off** (the default, and what every released
   install has) means you coach with the pipeline as it is, never edit it (section 7), and never
   talk about cost. **On** is the developer's own checkout.
@@ -213,4 +213,4 @@ a wrong hero), say so in the coaching and list it under "Pipeline issues" at the
 `coaching.md`, with the id and what you saw. That list is the bug report. Don't patch the
 pipeline: with dev off (section 0) the code and this skill are a released version the player
 is testing, and you don't edit either, even if asked how. With dev on, patch only when the
-user asks, in the deterministic stage that produced the error (see `docs/ow/HANDOFF.md`).
+user asks, in the deterministic stage that produced the error (see `docs/ow/pipeline.md`).

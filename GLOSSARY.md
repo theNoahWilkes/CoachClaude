@@ -1,0 +1,75 @@
+# CoachClaude
+
+Post-game coaching that looks back at a session of play, says what the player did well and
+poorly and what to try next, and keeps a record of it. One section of shared terms, then one
+per game.
+
+Game sections may add terms but never redefine a shared one. If a game needs a different
+meaning, it needs a different word.
+
+## Shared
+
+**Game**:
+A title the coach supports: Overwatch 2, Heroes of the Storm.
+_Avoid_: title, coach (for the game itself)
+
+**Match**:
+One unit of competition within a game, from start to result. Each match is coached on its own
+merits, without regard to which session it was in.
+_Avoid_: game (for a single match), round
+
+**Session**:
+The matches of one game played in one sitting, roughly a day or an evening. The session
+summary looks across them; match coaching does not.
+_Avoid_: recording, combined session, evening
+
+**Habit**:
+A trigger and the action to take on it: "when X happens, do Y."
+_Avoid_: tip, goal
+
+**Focus**:
+The one habit the player is working on right now. There is at most one focus; there may be none.
+_Avoid_: focus item, current habits, goal
+
+**Retired focus**:
+A focus the player has moved past. It is no longer graded, but it is remembered so that a
+regression can be recognized.
+
+**Pattern**:
+A problem that recurs across the matches of a session. The pattern finder looks for patterns
+without knowing the focus. A pattern is a no-op if it matches the focus, a regression if it
+matches a retired focus, and otherwise a candidate focus proposal.
+_Avoid_: trend (that is a statistic), theme
+
+**Focus grade**:
+The focus grader's judgement of improvement or regression on the current focus over a session.
+
+**General feedback**:
+What the coach says about a match regardless of the focus.
+
+**Focus feedback**:
+What the coach says about a match in light of the focus. There is none when there is no focus.
+
+**Focus proposal**:
+The single habit the coach thinks would be worth more than the current focus. There is at most
+one, and only when the coach sees a real reason for it. It is offered at the next focus check-in.
+_Avoid_: focus options, focus menu
+
+**Focus check-in**:
+The start of coaching, where the coach names the focus it will grade and, if there is a focus
+proposal, offers that one alternative. Keeping the current focus is the default.
+
+**Match log**:
+The objective record of every match: result, map, hero, score, rank movement and any other stat
+that can be extracted for free from the recording or replay. It is the primary record and must
+be rigorous and queryable. No judgement goes in it.
+_Avoid_: game log, history, stats file
+
+**Lessons file**:
+The coach's subjective record: the focus, retired focuses, declined proposals and a note per
+session. Kept for continuity; it does not need to be queryable.
+_Avoid_: notes, coaching log
+
+**Backlog**:
+Every match available but not yet coached, possibly spanning several sessions. Asking for
+coaching coaches the whole backlog.

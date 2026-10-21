@@ -76,7 +76,7 @@ owcoach trend --role support
 
 `<library>/<session>/mNN_result_mode_map/` holds the clip, `match.json` and `packet/`
 (`packet.json`, facts and stills per death, `moments.m3u` for VLC, the coach's `coaching.md`).
-`docs/ow/HANDOFF.md` documents every stage and its known limits. Calibrated for a 21:9 game
+`docs/ow/pipeline.md` documents every stage and its known limits. Calibrated for a 21:9 game
 area (auto-cropped from a 32:9 capture), HDR10 tonemapped.
 
 ## Heroes of the Storm
@@ -105,6 +105,10 @@ The version lives in `pyproject.toml`. A release is a tag `vX.Y.Z` on `main` wit
 number; a checkout reports `X.Y.Z+dev.<commit>` (`.dirty` with uncommitted changes) so the two
 never look alike. The skills ship inside the package (`coachlib/skills/`), so a release
 install gets the skill text of that tag and nothing newer.
+
+## Working on CoachClaude
+
+Read [CLAUDE.md](CLAUDE.md) first: the vocabulary, the decisions on record and the known gaps.
 
 ## Privacy
 
