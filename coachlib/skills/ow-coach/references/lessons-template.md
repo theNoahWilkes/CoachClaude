@@ -20,5 +20,5 @@ grades per game under each and never changes the wording:
 ## Improving
 <!-- patterns clean for 2+ sessions -->
 
-## Sessions
+## Session log
 <!-- - 2026-10-13: 3-6, one line on what decided it -->

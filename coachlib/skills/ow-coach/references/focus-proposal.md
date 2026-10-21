@@ -13,7 +13,7 @@ they stay in the lessons file under "Focus options" with their evidence.
 ## When
 
 After the session summary (SKILL.md section 4) and the lessons update (section 5), every
-session. In an interactive session, then ask (below). In a headless process (`coach_session.sh`),
+session. In an interactive session, then ask (below). In a headless process (`owcoach coach`),
 write it and say in chat and at the end of `<session>/coaching.md` that it's waiting.
 
 ## Where and shape

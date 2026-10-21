@@ -98,9 +98,8 @@ games). `references/subagents.md` has the numbers.
 
    They write to `packet/notes/`. A piece whose notes are already complete is skipped, so a run
    that was cut off resumes where it stopped. Give the death readers and the writer the path
-   of each hero's reference note from `packet.json` -> `hero_notes` when there is one. A hero
-   (paths relative to the profile dir). A hero
-   without one is fine (you know the kits). Never fetch one yourself: the wiki is consulted by
+   of each hero's reference note from `packet.json` -> `hero_notes` when there is one (paths
+   relative to the profile dir). A hero without one is fine (you know the kits). Never fetch one yourself: the wiki is consulted by
    the player, rarely (a new hero, a rework). If a hero newer than your training data has no
    note and it limited the coaching, say so in the report and suggest `owcoach hero <Name>`.
 
@@ -192,8 +191,7 @@ Headless: say the proposal is waiting, in chat and at the end of `<session>/coac
 
 ## 6. Per-game processes
 
-`owcoach coach "<session>"` (the driver; `scripts/coach_session.sh` is a wrapper for
-it) coaches a session as one `claude -p` process per game, in parallel, then one for the
+`owcoach coach "<session>"` (the driver, `owcoach/coach.py`) coaches a session as one `claude -p` process per game, in parallel, then one for the
 session summary and the lessons. It's the fast way: one
 session fanning out every game's readers hits the limit on concurrent subagents, and a game's
 writer waits for its slowest reader. In a game process, the prompt says so: coach that one game,
