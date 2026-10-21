@@ -13,18 +13,32 @@ Everything the coaches write goes to one page per game you can open and browse:
 
 ## Install
 
+Install a release (a tag such as `v0.2.0`; the latest is on the releases page):
+
 ```
-git clone https://github.com/theNoahWilkes/CoachClaude && cd CoachClaude
-pip install -e ".[ow,hots]"            # or just [ow] or [hots]
+pip install "coachclaude[ow,hots] @ git+https://github.com/theNoahWilkes/CoachClaude@v0.2.0"   # or just [ow] or [hots]
 npm install -g @anthropic-ai/claude-code
 ```
 
 That puts `owcoach` and `hotscoach` on your PATH. Then, once:
 
 ```
-owcoach install-skill                  # links both skills into ~/.claude/skills (hotscoach install-skill does the same)
+owcoach install-skill                  # copies both skills into ~/.claude/skills (hotscoach install-skill does the same)
 owcoach setup --from "<a recording with gameplay>.mp4"   # Overwatch: tools check, config, your nameplate
 hotscoach setup                        # HotS: finds your replays, detects your name
+```
+
+`owcoach --version` (or `hotscoach --version`) says what you're running; the page footer,
+`packet.json` and `analysis.json` carry the same number, so a report can be tied to a build.
+To upgrade, run the pip line with the new tag and `install-skill` again.
+
+To work on the code instead, clone it and install editable:
+
+```
+git clone https://github.com/theNoahWilkes/CoachClaude && cd CoachClaude
+pip install -e ".[ow,hots]"
+owcoach install-skill                  # from a checkout this links the skills, so editing the repo edits the live skill
+owcoach config dev on                  # developer mode, see below
 ```
 
 Both read one config file, `~/.config/coachclaude/config.json`, with a section per game, and
@@ -33,6 +47,15 @@ library, default `~/Videos/owcoach`). Nothing is written next to your recordings
 
 Without pip, the HotS script runs on its own: `uv run hotscoach.py setup` (uv installs its
 dependencies from the script header).
+
+### Developer mode
+
+By default the coaches behave like a released product: the skills coach with the pipeline as
+it is and, when a rule misfires, write the miss under "Pipeline issues" in the game's
+`coaching.md` instead of editing code, and nothing mentions what a review costs. With
+`"dev": true` at the top of the config (`owcoach config dev on`, or `COACHCLAUDE_DEV=1` for one
+command) the skills may fix the pipeline when it misses and `owcoach coach` prints its dollar
+estimate before it starts. Keep it off when you're testing what another player will get.
 
 ## Overwatch 2
 
@@ -74,7 +97,14 @@ skill writes `coaching.md` beside them (and one per session).
 Limits: positions are sampled about every 15 s and only for heroes in combat; ability casts
 are not in the tracker data; Garden of Terror and Hanamura emit no objective events. The tank
 and bruiser lists in the script need updating when new heroes ship. See
-`.claude/skills/hots-coach/references/maps.md` for per-map status.
+`coachlib/skills/hots-coach/references/maps.md` for per-map status.
+
+## Releases
+
+The version lives in `pyproject.toml`. A release is a tag `vX.Y.Z` on `main` with the same
+number; a checkout reports `X.Y.Z+dev.<commit>` (`.dirty` with uncommitted changes) so the two
+never look alike. The skills ship inside the package (`coachlib/skills/`), so a release
+install gets the skill text of that tag and nothing newer.
 
 ## Privacy
 

@@ -20,7 +20,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from coachlib.config import config_path, data_dir, load, save  # noqa: F401  (the file is shared with the HotS coach)
+from coachlib.config import config_path, data_dir, dev, load, save  # noqa: F401  (the file is shared with the HotS coach)
+from coachlib.install import skill_dir as _skill_dir
+from coachlib.version import version
 
 SESSION_PREFIX = "Overwatch 2 "        # ShadowPlay names recordings "Overwatch 2 <date> - <time>.<n>"
 CAPTURE_DEFAULTS = ("Videos/NVIDIA/Overwatch 2",)
@@ -118,14 +120,15 @@ def relpath(p: Path | str, base: Path) -> str:
 def resolved() -> dict:
     return {"config": str(config_path()), "player": ow().get("player"), "captures": [str(c) for c in captures()],
             "library": str(library()), "profile": str(profile_dir()), "cache": str(library() / ".cache"),
-            "tesseract": str(tesseract_dir()) if tesseract_dir() else None, "skill": str(skill_dir())}
+            "tesseract": str(tesseract_dir()) if tesseract_dir() else None, "skill": str(skill_dir()),
+            "dev": "on" if dev() else "off", "version": version()}
 
 
 def repo_dir() -> Path:
+    """The folder the package runs from (the checkout, or site-packages); the driver's cwd."""
     return Path(__file__).resolve().parent.parent
 
 
 def skill_dir() -> Path:
-    """The ow-coach skill: the copy in this repo, else the one linked into ~/.claude/skills."""
-    here = repo_dir() / ".claude" / "skills" / "ow-coach"
-    return here if here.is_dir() else Path.home() / ".claude" / "skills" / "ow-coach"
+    """The ow-coach skill: the packaged one (coachlib/skills), else the copy under ~/.claude/skills."""
+    return _skill_dir("ow-coach")

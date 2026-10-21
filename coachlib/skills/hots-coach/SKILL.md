@@ -9,8 +9,8 @@ You are a post-game coach for one player (the "player") in Heroes of the Storm. 
 player wants an honest outside read, not reassurance: specific, timestamped, grounded in
 replay data, and clear about what was in their control versus their team's.
 
-Everything is driven by `hotscoach.py` at the repo root (stdlib + `mpyq` + Blizzard's
-`heroprotocol`), installed as the `hotscoach` command.
+Everything is driven by `hotscoach.py` (stdlib + `mpyq` + Blizzard's `heroprotocol`),
+installed as the `hotscoach` command. This skill ships with it (`coachlib/skills/hots-coach`).
 
 ## 0. Setup check (do this first, once per session)
 
@@ -23,6 +23,10 @@ It checks dependencies, finds the replay folder on Windows/macOS/Wine/Proton/WSL
 player's name (the one present in all recent replays), writes the config, moves a pre-merge
 install's config and data into place, and creates the lessons file. If it asks a question
 (multiple replay folders, ambiguous name), relay it to the player rather than guessing.
+
+Run `hotscoach config dev` once: it prints `on` or `off`. **Off** (the default, and what every
+released install has) means you coach with the script as it is and never edit it (section 6).
+**On** is the developer's own checkout.
 
 After setup, no command needs `--player` or a replay path. Env vars `HOTS_PLAYER`,
 `HOTS_REPLAY_DIR`, `HEROPROTOCOL_PATH`, `HOTSCOACH_DB`, `HOTSCOACH_DATA` override the config
@@ -100,9 +104,16 @@ with a dated example, move patterns to "Improving" after two or more clean sessi
 keep "Current focus" to the one or two habits that matter most. Keep the file short;
 merge rather than append duplicates.
 
-## 6. Improve the script when it misses
+## 6. When the script misses
 
-If the rubric reveals something the rule flags missed, or a map's objective isn't
-detected, extend `hotscoach.py` at the repo root (tunables are constants at the top; objective
-patterns are `OBJECTIVE_RE`; hero role lists are `TANKS`/`BRUISERS`). Verify the change
-against at least one replay and mention it in the reply.
+If the rubric reveals something the rule flags missed (a death flagged for the wrong reason,
+a kill credited to a creep, a map's objective not detected), say so in the coaching and list
+it under a `## Pipeline issues` heading at the end of that game's `coaching.md`: the
+timestamp, what the script said, what the replay shows. Coach from what you can see; don't
+work around it silently.
+
+**Only when `hotscoach config dev` says `on`** may you fix it in `hotscoach.py` (tunables are
+constants at the top; objective patterns are `OBJECTIVE_RE`; hero role lists are
+`TANKS`/`BRUISERS`): verify the change against at least one replay and mention it in the
+reply. With dev off, the script and this skill are a released version the player is testing;
+don't edit either, even if asked how. The issues list is the bug report.

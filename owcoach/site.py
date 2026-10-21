@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from coachlib.site import num, slug, write
+from coachlib.version import version
 
 from .config import library, profile_dir
 
@@ -303,7 +304,7 @@ def collect() -> dict:
         "notes": ["Reports and notes are the coach's text, unedited. Stills and clips are read from the library next to this file; nothing is copied.",
                   "Clips are the recording's own HEVC HDR stream. Edge and Chrome play them with the HEVC extension; colours look flat on an SDR "
                   "screen. The VLC link plays the moments properly."],
-        "other": other, "generated": datetime.now().isoformat(timespec="minutes"),
+        "other": other, "generated": datetime.now().isoformat(timespec="minutes"), "version": version(),
     }
 
 

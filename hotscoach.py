@@ -20,6 +20,8 @@ Usage:
   hotscoach timeline REPLAY
   hotscoach positions REPLAY --start M:SS --end M:SS
   hotscoach site [--open]           the page over every game: <data>/coaching.html
+  hotscoach config [dev on|off]     the resolved settings; developer mode on or off
+  hotscoach install-skill           put both skills into ~/.claude/skills
   (any command accepts --player NAME to override the configured player)
 
 Installed with `pip install "coachclaude[hots]"` the command is `hotscoach`; from a clone it is
@@ -111,6 +113,28 @@ OLD_CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
 DATA_DIR = os.environ.get("HOTSCOACH_DATA") or os.path.expanduser("~/.local/share/coachclaude/hots")
 OLD_DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def coachlib():
+    """The shared package (config, page renderer, skill installer, version). From a clone it sits
+    next to this file, so `uv run hotscoach.py` works without pip."""
+    if REPO_DIR not in sys.path:
+        sys.path.insert(0, REPO_DIR)
+    import coachlib.config, coachlib.install, coachlib.site, coachlib.version  # noqa: F401
+    return coachlib
+
+
+def version():
+    return coachlib().version.version()
+
+
+def dev_mode():
+    """Developer mode ({"dev": true} at the top of the config, or COACHCLAUDE_DEV=1): the skill may
+    edit this script when a rule misses. Off by default, so a released install stays fixed."""
+    env = os.environ.get("COACHCLAUDE_DEV")
+    if env is not None:
+        return env.strip().lower() in ("1", "true", "on", "yes")
+    return bool(_read_json(CONFIG_PATH).get("dev"))
 
 
 def _read_json(path):
@@ -505,7 +529,7 @@ def print_report(m, deaths, notes):
 
 
 def analysis_dict(g, m, deaths, notes):
-    return dict(metrics=m, deaths=deaths, notes=notes,
+    return dict(version=version(), metrics=m, deaths=deaths, notes=notes,
                 teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy") for p in g.players},
                 objectives=[(fmt(t), n) for t, n in g.objectives],
                 camps=[(fmt(t), camp, "us" if team == g.me["team"] else "them") for t, camp, team in g.camps],
@@ -761,7 +785,7 @@ def cmd_setup(a):
             os.rmdir(OLD_DATA_DIR)
     lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
     if not os.path.exists(lessons):
-        tmpl = os.path.join(REPO_DIR, ".claude", "skills", "hots-coach", "references", "lessons-template.md")
+        tmpl = os.path.join(str(coachlib().install.skill_dir("hots-coach")), "references", "lessons-template.md")
         text = open(tmpl, encoding="utf-8").read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
         with open(lessons, "w", encoding="utf-8") as f:
             f.write(text.replace("<player>", player))
@@ -1000,14 +1024,11 @@ def _hots_tree():
             "days": days, "pages": [{"id": "lessons", "title": "Lessons", "md": lessons_md}], "tables": tables,
             "notes": ["Numbers come from the replay's tracker events (hotscoach analyze); reports are the coach's text, unedited.",
                       "A session is one evening: games before 06:00 count to the day before."],
-            "other": other, "generated": _dt.datetime.now().isoformat(timespec="minutes")}
+            "other": other, "generated": _dt.datetime.now().isoformat(timespec="minutes"), "version": version()}
 
 
 def build_site(out=None):
-    if REPO_DIR not in sys.path:
-        sys.path.insert(0, REPO_DIR)          # `import coachlib` from a clone, without pip install
-    from coachlib.site import write
-    return write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+    return coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
 
 
 def cmd_site(a):
@@ -1019,33 +1040,40 @@ def cmd_site(a):
 
 
 def cmd_install_skill(a):
-    """Link both skills into ~/.claude/skills (a junction on Windows)."""
-    import subprocess
-    home = os.path.join(os.path.expanduser("~"), ".claude", "skills")
-    os.makedirs(home, exist_ok=True)
-    for name in ("hots-coach", "ow-coach"):
-        src = os.path.join(REPO_DIR, ".claude", "skills", name)
-        dst = os.path.join(home, name)
-        if not os.path.isdir(src):
-            continue
-        is_link = os.path.islink(dst) or (os.path.isdir(dst) and os.path.realpath(dst) != os.path.abspath(dst))
-        if is_link:
-            if os.path.realpath(dst) == os.path.realpath(src):
-                print(f"already linked: {dst}")
-                continue
-            os.rmdir(dst) if sys.platform == "win32" else os.unlink(dst)
-        elif os.path.exists(dst):
-            print(f"{dst} is a real folder, not a link: move it away and rerun")
-            continue
-        if sys.platform == "win32":
-            subprocess.run(["cmd", "/c", "mklink", "/J", dst, src], check=True, capture_output=True)
-        else:
-            os.symlink(src, dst, target_is_directory=True)
-        print(f"linked {dst} -> {src}")
+    """Both skills into ~/.claude/skills: linked from a checkout, copied from a release install."""
+    mode = "link" if a.link else "copy" if a.copy else "auto"
+    for line in coachlib().install.install_skills(mode):
+        print(line)
+
+
+def cmd_config(a):
+    """The resolved settings, or `hotscoach config dev on|off`."""
+    if a.value is not None:
+        if a.key != "dev":
+            sys.exit("config: only `dev` can be set here (hotscoach config dev on|off); the rest comes from setup")
+        cfg = coachlib().config
+        try:
+            on = cfg.parse_on_off(a.value)
+        except ValueError as e:
+            sys.exit(f"config: {e}")
+        p = cfg.set_dev(on)
+        print(f"dev: {'on' if on else 'off'} ({p})")
+        return
+    sec = load_config()
+    r = {"config": CONFIG_PATH, "player": sec.get("player"), "replay_dir": sec.get("replay_dir"), "data": DATA_DIR,
+         "db": os.environ.get("HOTSCOACH_DB", os.path.join(DATA_DIR, "games.db")), "skill": str(coachlib().install.skill_dir("hots-coach")),
+         "dev": "on" if dev_mode() else "off", "version": version()}
+    if a.key:
+        if a.key not in r:
+            sys.exit(f"config: no key {a.key!r} (one of {', '.join(r)})")
+        print(r[a.key] if r[a.key] is not None else "")
+    else:
+        print(json.dumps(r, indent=1))
 
 
 def main():
     ap = argparse.ArgumentParser(description="Rule-based HotS replay coach")
+    ap.add_argument("--version", action="version", version=f"coachclaude {version()}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("analyze"); p.add_argument("replay"); p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_analyze)
@@ -1054,8 +1082,14 @@ def main():
     p.set_defaults(fn=cmd_batch)
     p = sub.add_parser("site", help="rebuild <data>/coaching.html, the page over every game")
     p.add_argument("--out"); p.add_argument("--open", action="store_true"); p.set_defaults(fn=cmd_site)
-    p = sub.add_parser("install-skill", help="link the hots-coach and ow-coach skills into ~/.claude/skills")
+    p = sub.add_parser("install-skill", help="put the hots-coach and ow-coach skills into ~/.claude/skills "
+                                             "(linked from a checkout, copied from a release install)")
+    p.add_argument("--link", action="store_true", help="link even from an installed package")
+    p.add_argument("--copy", action="store_true", help="copy even from a checkout (what a release install does)")
     p.set_defaults(fn=cmd_install_skill)
+    p = sub.add_parser("config", help="the resolved settings (or one: hotscoach config dev); hotscoach config dev on|off")
+    p.add_argument("key", nargs="?"); p.add_argument("value", nargs="?", help="only for dev: on or off")
+    p.set_defaults(fn=cmd_config)
     p = sub.add_parser("timeline"); p.add_argument("replay"); p.set_defaults(fn=cmd_timeline)
     p = sub.add_parser("positions"); p.add_argument("replay")
     p.add_argument("--start", required=True); p.add_argument("--end", required=True)

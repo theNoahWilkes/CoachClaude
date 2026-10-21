@@ -5,6 +5,10 @@
 
 Data goes under ~/.local/share/coachclaude/<section>/ unless a section says otherwise.
 Env: COACHCLAUDE_CONFIG names another file.
+
+One top-level key, "dev": true, turns on developer mode (off by default): the coaching skills
+may edit the pipeline when it misses, and `owcoach coach` prints its dollar estimate. A
+released install never shows either. Env COACHCLAUDE_DEV=1|0 overrides it for one command.
 """
 from __future__ import annotations
 
@@ -48,3 +52,26 @@ def update(name: str, **values) -> Path:
 
 def data_dir(name: str) -> Path:
     return Path.home() / ".local" / "share" / APP / name
+
+
+def dev() -> bool:
+    """Developer mode: off unless the config says {"dev": true} or COACHCLAUDE_DEV=1."""
+    env = os.environ.get("COACHCLAUDE_DEV")
+    if env is not None:
+        return env.strip().lower() in ("1", "true", "on", "yes")
+    return bool(load().get("dev"))
+
+
+def set_dev(on: bool) -> Path:
+    cfg = load()
+    cfg["dev"] = bool(on)
+    return save(cfg)
+
+
+def parse_on_off(value: str) -> bool:
+    v = value.strip().lower()
+    if v in ("on", "1", "true", "yes"):
+        return True
+    if v in ("off", "0", "false", "no"):
+        return False
+    raise ValueError(f"expected on or off, got {value!r}")

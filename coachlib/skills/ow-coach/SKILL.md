@@ -16,9 +16,12 @@ if something is missing from the packet that the pipeline could extract, say so 
 
 ## 0. Where things are
 
-- Code: the CoachClaude repo containing this skill (`owcoach/` package, installed as the
-  `owcoach` command; `python -m owcoach ...` from the repo root does the same). Its
-  `docs/ow/HANDOFF.md` documents every stage and its known limits.
+- Code: the `owcoach` package, installed as the `owcoach` command (`python -m owcoach ...`
+  from a checkout does the same). This skill ships with it (`coachlib/skills/ow-coach`). The
+  repo's `docs/ow/HANDOFF.md` documents every stage and its known limits.
+- `owcoach config dev` prints `on` or `off`. **Off** (the default, and what every released
+  install has) means you coach with the pipeline as it is, never edit it (section 7), and never
+  talk about cost. **On** is the developer's own checkout.
 - Paths come from the config, never from guesses: `owcoach config` prints them all,
   `owcoach config profile` one of them. The **profile** (per player: `profile.json`
   with the player's name, `lessons.md`, `focus_proposal.md`, `heroes/`, `history.sqlite`) and the
@@ -30,9 +33,10 @@ if something is missing from the packet that the pipeline could extract, say so 
 ## 1. How the player asks, and finding the games
 
 - "Coach last night's games" / "tonight" / "my new games" → `owcoach new` lists the
-  recordings not yet in the library. Tell the player what will be coached and roughly what it
-  costs (about $6 a game, several minutes each), then run
-  `owcoach coach --new --yes` in the background. It does every local stage, then one
+  recordings not yet in the library. Tell the player what will be coached and that it takes
+  several minutes a game, then run `owcoach coach --new --yes` in the background. (With dev
+  on, `owcoach coach` also prints a dollar estimate; pass it on. With dev off there is none,
+  and you don't bring up cost yourself: the player isn't being billed per review.) It does every local stage, then one
   `claude -p` process per game in parallel and one summary (section 6); several one-game
   recordings from one evening get one combined summary. When it's done, read the summary
   `coaching.md` it names and the focus proposal, give the short version in chat, and name
@@ -206,5 +210,7 @@ everything itself for one game, and asks instead.
 
 If the stills contradict the packet (a death that isn't one, a wrong killer, a missed kill cam,
 a wrong hero), say so in the coaching and list it under "Pipeline issues" at the end of
-`coaching.md`, with the id and what you saw. Don't patch the pipeline unless the user asks;
-the fix belongs in the deterministic stage that produced it (see `docs/ow/HANDOFF.md`).
+`coaching.md`, with the id and what you saw. That list is the bug report. Don't patch the
+pipeline: with dev off (section 0) the code and this skill are a released version the player
+is testing, and you don't edit either, even if asked how. With dev on, patch only when the
+user asks, in the deterministic stage that produced the error (see `docs/ow/HANDOFF.md`).

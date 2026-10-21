@@ -18,9 +18,14 @@ Noah's Windows PC). Read this before touching anything.
 **The repo is CoachClaude** (`github.com/theNoahWilkes/CoachClaude`, local clone under
 `~/source/repos/CoachClaude`): `owcoach/` (this package), `hotscoach.py` (the Heroes of the
 Storm coach, one file), `coachlib/` (what they share: `config.py`, the one config file with a
-section per game, and `site.py`, the page renderer), `.claude/skills/{ow-coach,hots-coach}/`,
-`docs/ow/` (this file, the labels). `pip install -e ".[ow,hots]"` puts `owcoach` and
-`hotscoach` on PATH; `owcoach install-skill` links both skills into `~/.claude/skills`.
+section per game, `site.py`, the page renderer, `version.py` and `install.py`), the skills as
+package data in `coachlib/skills/{ow-coach,hots-coach}/` (since 2026-10-20; they were
+`.claude/skills/` before), `docs/ow/` (this file, the labels). `pip install -e ".[ow,hots]"`
+puts `owcoach` and `hotscoach` on PATH; `owcoach install-skill` links both skills into
+`~/.claude/skills` from a checkout and copies them from a release install, so a player on a
+tagged version runs that tag's skill text. Developer mode (`owcoach config dev on`, the
+top-level `dev` key of the config) is what lets the skills edit the pipeline and shows the
+cost estimate; off by default, off on every released install.
 owcoach came in squashed on 2026-10-18 (its 55-commit history stays in the old repo under
 `Videos/NVIDIA/Overwatch 2/owcoach/src`, now an archive).
 

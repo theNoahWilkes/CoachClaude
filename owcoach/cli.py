@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import time
 from pathlib import Path
 
@@ -162,6 +161,17 @@ def cmd_trend(a):
 
 def cmd_config(a):
     from .config import resolved
+    if a.value is not None:
+        if a.key != "dev":
+            raise SystemExit("config: only `dev` can be set here (owcoach config dev on|off); the rest comes from setup")
+        from coachlib.config import parse_on_off, set_dev
+        try:
+            on = parse_on_off(a.value)
+        except ValueError as e:
+            raise SystemExit(f"config: {e}")
+        p = set_dev(on)
+        print(f"dev: {'on' if on else 'off'} ({p})")
+        return
     r = resolved()
     if a.key:
         v = r.get(a.key)
@@ -289,7 +299,7 @@ def cmd_site(a):
 def cmd_coach(a):
     import sys
     from .coach import coach, estimate, game_dirs
-    from .config import new_recordings, resolve_session
+    from .config import dev, new_recordings, resolve_session
     from .pipeline import NoProfile, run
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sessions = []
@@ -310,13 +320,16 @@ def cmd_coach(a):
         sessions.append(p)
     games = a.games.split() if a.games else None
     n = sum(len(game_dirs(s, games)) for s in sessions)
-    cost, per, hist = estimate(n)
     print(f"{n} game(s) in {len(sessions)} session(s): " + ", ".join(s.name for s in sessions))
     for s in sessions:
         for g in game_dirs(s, games):
             print(f"  {s.name} / {g.name}")
-    print(f"estimated cost ${cost:.0f} (${per:.2f}/game, {'the mean of ' + str(hist) + ' logged games' if hist else 'no history yet'})"
-          + (" + about $1 for the summary" if a.summary else ""))
+    if dev():                     # the dollar estimate is a development aid, never shown to a player
+        cost, per, hist = estimate(n)
+        print(f"estimated cost ${cost:.0f} (${per:.2f}/game, {'the mean of ' + str(hist) + ' logged games' if hist else 'no history yet'})"
+              + (" + about $1 for the summary" if a.summary else ""))
+    else:
+        print("this takes several minutes a game")
     if n == 0:
         print("no games to coach")
         return
@@ -345,43 +358,16 @@ def cmd_migrate(a):
 
 
 def cmd_install_skill(a):
-    import subprocess
-    import sys
-    from .config import repo_dir
-    for name in ("ow-coach", "hots-coach"):
-        src = repo_dir() / ".claude" / "skills" / name
-        dst = Path.home() / ".claude" / "skills" / name
-        if not src.is_dir():
-            continue
-        if dst.is_symlink() or (dst.exists() and os.path.islink(dst)) or _is_junction(dst):
-            if dst.resolve() == src.resolve():
-                print(f"already linked: {dst}")
-                continue
-            os.rmdir(dst) if sys.platform == "win32" else dst.unlink()     # a junction/link, not the folder
-        elif dst.exists():
-            print(f"{dst} is a real folder, not a link: move it away and rerun")
-            continue
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if sys.platform == "win32":
-            subprocess.run(["cmd", "/c", "mklink", "/J", str(dst), str(src)], check=True, capture_output=True)
-        else:
-            dst.symlink_to(src, target_is_directory=True)
-        print(f"linked {dst} -> {src}")
-
-
-def _is_junction(p: Path) -> bool:
-    try:
-        return p.is_junction()          # Python 3.12+
-    except AttributeError:
-        import stat
-        try:
-            return bool(os.lstat(p).st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
-        except (OSError, AttributeError):
-            return False
+    from coachlib.install import install_skills
+    mode = "link" if a.link else "copy" if a.copy else "auto"
+    for line in install_skills(mode):
+        print(line)
 
 
 def main(argv=None):
+    from coachlib.version import version
     p = argparse.ArgumentParser(prog="owcoach")
+    p.add_argument("--version", action="version", version=f"coachclaude {version()}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("scan")
@@ -473,8 +459,9 @@ def main(argv=None):
     s.add_argument("--yes", action="store_true", help="accept the OCR'd name without asking")
     s.set_defaults(fn=cmd_setup, needs_tools=False)
 
-    s = sub.add_parser("config", help="print the resolved paths (or one: owcoach config library)")
+    s = sub.add_parser("config", help="print the resolved paths (or one: owcoach config library); owcoach config dev on|off")
     s.add_argument("key", nargs="?")
+    s.add_argument("value", nargs="?", help="only for dev: on or off")
     s.set_defaults(fn=cmd_config, needs_tools=False)
 
     s = sub.add_parser("new", help="recordings in the capture folders that have no session in the library yet")
@@ -516,7 +503,10 @@ def main(argv=None):
     s.add_argument("--rewrite-only", action="store_true", help="only make the stored paths relative")
     s.set_defaults(fn=cmd_migrate, needs_tools=False)
 
-    s = sub.add_parser("install-skill", help="link the ow-coach and hots-coach skills into ~/.claude/skills")
+    s = sub.add_parser("install-skill", help="put the ow-coach and hots-coach skills into ~/.claude/skills "
+                                             "(linked from a checkout, copied from a release install)")
+    s.add_argument("--link", action="store_true", help="link even from an installed package")
+    s.add_argument("--copy", action="store_true", help="copy even from a checkout (what a release install does)")
     s.set_defaults(fn=cmd_install_skill, needs_tools=False)
 
     a = p.parse_args(argv)

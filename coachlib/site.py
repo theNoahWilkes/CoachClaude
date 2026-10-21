@@ -3,7 +3,7 @@
 The renderer knows nothing about either game. A collector (owcoach.site.collect, hotscoach
 collect_hots) decides the content and hands over this shape:
 
-  tree:    app, player, title, generated, columns [{key, label, align?}], days [...], pages [...],
+  tree:    app, player, title, generated, version, columns [{key, label, align?}], days [...], pages [...],
            tables [...] (home extras), notes [str], other {title, href} | None, banner (md) | None
   day:     date, sessions [session], combined [session]        (combined = a summary over sessions)
   session: id, label, date, kind ("session" | "combined"), sub (html), games [game], summary_md,
@@ -211,8 +211,11 @@ def _home(tree: dict) -> str:
     out.append("<h2>All games</h2>" + games_table(tree, allg))
     for t in tree.get("tables") or []:
         out.append(table_html(t))
-    if tree.get("notes"):
-        out.append("<h2>About this page</h2><ul>" + "".join(f"<li>{e(n)}</li>" for n in tree["notes"]) + "</ul>")
+    notes = list(tree.get("notes") or [])
+    if tree.get("version") or tree.get("generated"):
+        notes.append(f"Built by coachclaude {tree.get('version') or '?'}" + (f" on {tree['generated']}" if tree.get("generated") else "") + ".")
+    if notes:
+        out.append("<h2>About this page</h2><ul>" + "".join(f"<li>{e(n)}</li>" for n in notes) + "</ul>")
     return "".join(out)
 
 

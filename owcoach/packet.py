@@ -449,8 +449,10 @@ def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own:
     from .stats import game_stats
     time_dead = round(sum(d["respawned"]["t"] - d["t"] for d in deaths if d["respawned"]), 1)
     stats = game_stats(cache, m, gdir, time_dead)
+    from coachlib.version import version
     packet = {
         "schema": 1,
+        "version": version(),
         "player": player,
         "game": {"map": m.get("map"), "mode": m.get("mode"), "queue": m.get("queue"), "result": m.get("result"),
                  "duration_s": round(m["end"] - m["start"], 1), "clock_at_end": m.get("final_clock"),
