@@ -37,16 +37,15 @@ if something is missing from the packet that the pipeline could extract, say so 
   several minutes a game, then run `owcoach coach --new --yes` in the background. (With dev
   on, `owcoach coach` also prints a dollar estimate; pass it on. With dev off there is none,
   and you don't bring up cost yourself: the player isn't being billed per review.) It does every local stage, then one
-  `claude -p` process per game in parallel and one summary (section 6); several one-game
-  recordings from one evening get one combined summary. When it's done, read the summary
+  `claude -p` process per piece of each game (section 3) and one for the summary (section 6);
+  several one-game recordings from one evening get one combined summary. When it's done, read the summary
   `coaching.md` it names and the focus proposal, give the short version in chat, and name
   `<library>/coaching.html` (rebuilt by the driver): every session, game, report, still and clip
-  in one page. Don't coach a multi-game session in this process: the fan-out hits the subagent
-  limit (section 3).
+  in one page. Never coach a game in this process: the driver does every fan-out (section 3).
 - "Show me the reports" / "open the coaching" → `owcoach site --open`.
 - A session name (`2026.10.16 - 22.23.04.03`) or folder → `owcoach coach "<session>" --yes`.
-- A single game folder or `packet.json` named explicitly → that game, which you may coach here,
-  in this process, as sections 2 to 5 describe.
+- A single game folder or `packet.json` named explicitly → `owcoach coach "<session>" --games
+  mNN --yes` (the game folder's name starts with `mNN`), then read its `packet/coaching.md`.
 - A recording with no session yet and no coaching wanted: `owcoach run "<stem>"`
   (about 2 to 4 min per recording). If it says there's no profile, the player runs
   `owcoach setup --from "<recording>"` once; relay that.
@@ -66,54 +65,38 @@ current focus and say the proposal is still waiting.
 
 ## 3. Analyze each game
 
-You don't read the packet's images yourself, and you don't write the game reports. Reader
-subagents read the images one piece at a time and write notes. Then one writer subagent per game
-judges from those notes and writes that game's report. You write the session summary and the
-lessons. A whole game's images in one context overflow it, and the session then re-reads stills
-it has forgotten. Writing the games one after another was the slowest serial step (4.6 min for 5
-games). `references/subagents.md` has the numbers.
+No Claude context reads a game's images or writes its report by itself. `owcoach coach` (the
+driver, `owcoach/coach.py`) cuts each game into **pieces** and runs one `claude -p` process per
+piece, each from a **brief** the driver fills in from `packet.json` and the lessons file. The
+briefs are templates next to this file, in `briefs/` (`deaths.md`, `overview.md`, `ults.md`,
+`writer.md`); the piece table and the measured reasons are in `references/subagents.md`. To
+change how a piece reads or writes, edit its template or the rubric; nobody prompts a reader by
+hand (ADR 0011).
 
-1. From each game's `packet.json`, read only what the briefs need: `game`, `heroes`, `counts`,
-   each death's fields and its `facts` text (not its long `frames` list), `ults` and the
-   `overview` list. The writer
-   reads the whole file. Grep or a short `python -c` is fine for pulling these out.
-2. The writer reads `stats`: the player's final-scoreboard totals and `player_per10` (per 10 min
-   of match clock, which pauses in setup and between rounds, so it's active time), the other
-   support (`teammate_same_role_per10`), the enemy supports (`enemy_same_role_per10`), and
-   `time_dead_pct`. These are read locally; nobody re-reads numbers off the screenshots.
-3. Fan out: launch the subagents in `references/subagents.md`, using its briefs as written:
-   - **One per two deaths:** paste each death's `facts` field from `packet.json` into the brief
-     verbatim (the HUD from 10 s before the death with every slot by name, every press with its
-     context, the low-HP episode, the feed and the alive counts, all read locally; also on disk
-     as `packet/facts/dNN.md`). Then every first-pass still: the detail stills at native
-     resolution (every 0.5 s), the kill cam and the lead-in. The packet also keeps detail and
-     kill cam every 0.1 s, marked `extra`. The reader opens those only for a specific question,
-     up to 12 per death. The reader doesn't rebuild HP or cooldowns from the images; its looks
-     go on cover, who is in view, threats and the kill cam.
-   - **One per 5 min of overview:** 30 first-pass sheets (cells 5 s apart), plus up to 15 extra
-     sheets of the cells in between. These cover the time between deaths: positioning, fights
-     won, good plays, focus tests and rejoins. Give each its window's `hud_game.fights` and
-     `low_episodes`, so it knows where to look.
-   - **One for the ults.**
-
-   They write to `packet/notes/`. A piece whose notes are already complete is skipped, so a run
-   that was cut off resumes where it stopped. Give the death readers and the writer the path
-   of each hero's reference note from `packet.json` -> `hero_notes` when there is one (paths
-   relative to the profile dir). A hero without one is fine (you know the kits). Never fetch one yourself: the wiki is consulted by
-   the player, rarely (a new hero, a rework). If a hero newer than your training data has no
-   note and it limited the coaching, say so in the report and suggest `owcoach hero <Name>`.
-
-   Before you launch, run `owcoach trend --role support --json` (from the repo root)
-   for the player's recent games vs their baseline, and save its output to
-   `<session>/trend.json` for the writers. Add `--hero NAME` when most of a game was one hero and
-   there's enough history on it.
-4. As soon as all of one game's readers have replied, run `owcoach notes "<game dir>"`
-   (it concatenates the notes into `notes/all.md`) and launch that game's writer (the writer
-   brief in `references/subagents.md`). Don't wait for the other games. A game whose `coaching.md` and
-   `notes/summary.md` are newer than all its notes is already written; skip it.
-5. When every writer has replied, read each game's `notes/summary.md` (not the full reports),
-   then write the session summary (end of section 4) and update the lessons file (section 5).
-   Give the user the short version in chat.
+- **Readers:** one per two deaths, one per 5 min of overview sheets (30 first-pass sheets, cells
+  5 s apart, plus up to 15 extra sheets), one for the ults. Each reads its images once, in a
+  fresh context, and writes `packet/notes/<piece>.md`. A death reader gets each death's `facts`
+  block verbatim (the HUD from 10 s before with every slot by name, every press with its
+  context, the low-HP episode, the feed and the alive counts, all read locally; also on disk as
+  `packet/facts/dNN.md`), then the first-pass stills at native resolution; the detail and kill
+  cam every 0.1 s are marked `extra` and opened only for a specific question, up to 12 per
+  death. Readers don't rebuild HP or cooldowns from the images; their looks go on cover, who is
+  in view, threats and the kill cam. An overview reader gets its window's `hud_game.fights`,
+  `low_episodes` and `presses`, so it knows where to look. Readers and the writer get the path
+  of each hero's reference note from `hero_notes` when there is one; a hero without is fine
+  (you know the kits), and nobody fetches one mid-run. If a hero newer than your training data
+  has no note and it limited the coaching, the report says so and suggests `owcoach hero <Name>`.
+- **The writer**, one per game, launched as soon as that game's readers are done and the driver
+  has concatenated the notes into `notes/all.md`. It reads `packet_slim.json` and `all.md`,
+  judges, and writes `packet/coaching.md` and `notes/summary.md`, which ends with a `## Lessons`
+  section of what it would change in the lessons file; it never edits that file (the processes
+  would race).
+- The driver saves `owcoach trend --role support --json` to `<session>/trend.json` before any
+  piece starts, for the writers and the summary; the writer reads `stats` (the player's
+  final-scoreboard totals and per-10 rates, the other support, the enemy supports and
+  `time_dead_pct`) from the packet, so nobody re-reads numbers off the screenshots.
+- A piece whose notes are complete is skipped, and a game whose report and summary are newer
+  than its notes is skipped whole, so a run that was cut off resumes where it stopped.
 
 What the writer does, in its own context:
 - Read every notes file of its game: the overview chunks in order, then the deaths, then the
@@ -189,20 +172,18 @@ patterns, each with its evidence. Interactive: ask the player to pick (AskUserQu
 with `owcoach focus N [N]` from the repo root, and show the new "Current focus".
 Headless: say the proposal is waiting, in chat and at the end of `<session>/coaching.md`.
 
-## 6. Per-game processes
+## 6. Processes
 
-`owcoach coach "<session>"` (the driver, `owcoach/coach.py`) coaches a session as one `claude -p` process per game, in parallel, then one for the
-session summary and the lessons. It's the fast way: one
-session fanning out every game's readers hits the limit on concurrent subagents, and a game's
-writer waits for its slowest reader. In a game process, the prompt says so: coach that one game,
-read the saved `trend.json`, write the report and `notes/summary.md`, and put what you would
-change in the lessons file under `## Lessons` at the end of `notes/summary.md` instead of editing
-it (the processes would race). The summary process reads those sections and does sections 4
-(session summary) and 5, including the focus proposal, which it leaves for the player to pick
-with `owcoach focus` (nobody is at the keyboard). With several sessions (`--sessions-summary`,
-or every new one-game recording of an evening) the summary covers them all and goes to
-`<library>/<date> - <HH.MM> to <HH.MM>/coaching.md`. A hand-run interactive session can still do
-everything itself for one game, and asks instead.
+`owcoach coach "<session>"` is the only way a game gets coached. The driver runs the readers
+through a pool (`--parallel`, default 12; overview pieces first, they take longest), each game's
+writer as soon as its readers are done, and then one process for the session summary, the
+lessons file and the focus proposal. That summary process uses this skill: it reads each game's
+`notes/summary.md` and `trend.json`, does section 4 (session summary) and section 5, and leaves
+the focus proposal for the player to pick with `owcoach focus` (nobody is at the keyboard). With
+several sessions (`--sessions-summary`, or every new one-game recording of an evening) the
+summary covers them all and goes to `<library>/<date> - <HH.MM> to <HH.MM>/coaching.md`. Logs go
+to `<session>/.coach/<game>/<piece>.jsonl`; with dev on, the driver's estimate comes from them.
+An interactive session never launches readers or writers itself (ADR 0011).
 
 ## 7. When the data falls short
 

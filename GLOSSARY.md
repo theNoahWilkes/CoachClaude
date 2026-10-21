@@ -73,3 +73,34 @@ _Avoid_: notes, coaching log
 **Backlog**:
 Every match available but not yet coached, possibly spanning several sessions. Asking for
 coaching coaches the whole backlog.
+
+## Overwatch
+
+**Packet**:
+What the pipeline extracts for one match, in `<match>/packet/`: `packet.json` (facts, timeline,
+deaths, ults, HUD reads), the stills, the overview sheets and the per-death facts blocks. The
+coach's only input.
+
+**Piece**:
+One unit of coaching work on a match with its own process and context: two deaths, five minutes
+of overview sheets, the ults, or the writer.
+
+**Brief**:
+The prompt a piece's process gets: a template from the skill's `briefs/` folder filled in by the
+driver from the packet and the lessons file.
+
+**Reader**:
+The process for a deaths, overview or ults piece. It reads its images once and writes reader
+notes; it records, it does not coach.
+
+**Reader notes**:
+A reader's output, `<match>/packet/notes/<piece>.md`, in the shape its brief fixes. The writer's
+only view of the images.
+
+**Writer**:
+The process that judges one match from its reader notes and the packet and writes the match's
+report and `notes/summary.md`.
+
+**Driver**:
+`owcoach coach`: the code that cuts matches into pieces, fills the briefs, runs the processes
+and the session summary, and rebuilds the page.

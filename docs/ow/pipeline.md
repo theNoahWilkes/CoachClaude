@@ -378,13 +378,15 @@ writes `packet/coaching.md` per match and keeps `lessons.md` in the profile dir.
 finds go under "Pipeline issues" instead of being patched. Focus ownership and the proposal
 flow (`focus.py`, `owcoach focus`): [ADR 0003](../adr/0003-focus-loop.md).
 
-- **Readers and writer:** the main context reads no images; reader subagents write
-  `packet/notes/`, one writer per match writes the report
-  ([ADR 0007](../adr/0007-reader-writer-subagents.md)). `owcoach notes <match dir>` concatenates
-  a match's notes into `notes/all.md` so the writer reads one file.
-- **Processes:** `owcoach coach` runs one `claude -p` per match, then one for the session
-  summary and lessons ([ADR 0006](../adr/0006-one-headless-process-per-match.md)). Logs go to
-  `<session>/.coach/*.jsonl`; the cost estimate comes from the logged `total_cost_usd`.
+- **Pieces and processes:** `owcoach coach` cuts each match into pieces (two deaths, 5 min of
+  overview, the ults, the writer), fills a brief per piece from the packet and the lessons file
+  (`owcoach/briefs.py`, templates in the skill's `briefs/`) and runs one `claude -p` per piece
+  through a pool, the writer when its match's readers are done, then one process for the
+  session summary and lessons ([ADR 0011](../adr/0011-one-headless-process-per-piece.md),
+  [0006](../adr/0006-one-headless-process-per-match.md)). Readers read every image once and
+  write `packet/notes/`; the writer judges from `notes/all.md`
+  ([ADR 0007](../adr/0007-reader-writer-subagents.md)). Logs go to
+  `<session>/.coach/<match>/<piece>.jsonl`; the cost estimate sums their `total_cost_usd`.
 - **Defaults and why:** readers and writer at effort low (`--effort`, `--writer-effort`), all
   Opus (`--reader-model` to change the readers).
   - Low-effort readers (A/B on 7 matches with labelled deaths, scored against
@@ -408,8 +410,13 @@ flow (`focus.py`, `owcoach focus`): [ADR 0003](../adr/0003-focus-loop.md).
     are ~300k tokens a match. Every arm of the A/B scored about half against the labels,
     wrong on movement in 4-6 of 9 deaths and right on the lever once in 27: the quality
     ceiling is the movement line and the writer's lever judgement, not the reader model.
-    Next cost levers are token volume (briefs built by `owcoach` with one `claude -p` per
-    piece, a smaller detail-still crop now the HUD is read locally, fewer first-pass stills).
+    The first volume lever landed 2026-10-21 (ADR 0011, issue #21): one `claude -p` per piece
+    with briefs filled by `owcoach` cut cache reads 27 %, output 33 % and wall clock 13 % on
+    the same five matches at equal blind quality (48/90 vs 46/90). List price moved only 4 %
+    in that run because top-level processes wrote 1-hour cache; the driver now sets
+    `CLAUDE_CODE_PROMPT_CACHE_TTL=5m`, which prices the same run at -29 %. Next: a smaller
+    detail-still crop now the HUD is read locally, fewer first-pass stills, pipeline-chosen
+    overview cells.
 - **Timing:** subagents start ~8 s apart even when launched in one message, and about 20 can
   run at once. On new footage (three one-match recordings, 2026-10-17) the local stages took
   1.5-3.5 min per recording and coaching 5.6-8.7 min and $4.41-7.98 per match.
