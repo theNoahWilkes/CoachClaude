@@ -5,28 +5,38 @@
 #   "mpyq>=0.2.5",
 #   "six>=1.14",
 #   "heroprotocol @ git+https://github.com/Blizzard/heroprotocol",
+#   "markdown-it-py>=3",
 # ]
 # ///
 """hotscoach - rule-based post-game coach for Heroes of the Storm replays.
 
 First run:
-  hotscoach.py setup        finds your replays, detects your name, writes config
+  hotscoach setup           finds your replays, detects your name, writes config
 
 Usage:
-  hotscoach.py analyze REPLAY [--json]
-  hotscoach.py batch [DIR] [--new-only]
-  hotscoach.py trend [--last N] [--hero HERO]
-  hotscoach.py timeline REPLAY
-  hotscoach.py positions REPLAY --start M:SS --end M:SS
+  hotscoach analyze REPLAY [--json]
+  hotscoach batch [DIR] [--new-only]
+  hotscoach trend [--last N] [--hero HERO]
+  hotscoach timeline REPLAY
+  hotscoach positions REPLAY --start M:SS --end M:SS
+  hotscoach site [--open]           the page over every game: <data>/coaching.html
+  hotscoach config [dev on|off]     the resolved settings; developer mode on or off
+  hotscoach install-skill           put both skills into ~/.claude/skills
   (any command accepts --player NAME to override the configured player)
 
-Dependencies: pip install -r requirements.txt  (or run with `uv run`, which reads the
-header above). Config: ~/.config/hotscoach/config.json. Env vars HOTS_PLAYER,
-HOTS_REPLAY_DIR, HEROPROTOCOL_PATH and HOTSCOACH_DB override it.
+Installed with `pip install "coachclaude[hots]"` the command is `hotscoach`; from a clone it is
+`uv run hotscoach.py ...` (uv reads the header above) or `python hotscoach.py ...`.
+
+Config: the "hots" section of ~/.config/coachclaude/config.json (shared with the Overwatch
+coach; an old ~/.config/hotscoach/config.json is read and migrated by `setup`). Data:
+~/.local/share/coachclaude/hots/ (games.db, lessons-<player>.md, games/<session>/<game>/ with
+analysis.json, timeline.txt and the coach's coaching.md, coaching.html). Env vars HOTS_PLAYER,
+HOTS_REPLAY_DIR, HEROPROTOCOL_PATH, HOTSCOACH_DB and HOTSCOACH_DATA override it.
 """
-import argparse, glob, hashlib, importlib.util, json, math, os, re, sqlite3, sys
+import argparse, glob, hashlib, importlib.util, io, json, math, os, re, sqlite3, sys
 from collections import Counter
 from collections import defaultdict
+from contextlib import redirect_stdout
 
 # ---------------------------------------------------------------- tunables
 TANK_FAR = 30          # units: "your frontline was far away"
@@ -70,7 +80,7 @@ def _versions_dir():
     if os.path.isdir(clone):
         sys.path.insert(0, clone)
         return os.path.join(clone, "heroprotocol", "versions")
-    sys.exit("heroprotocol not found: run `pip install -r requirements.txt` "
+    sys.exit("heroprotocol not found: run `pip install \"coachclaude[hots]\"` from the repo "
              "(or `uv run hotscoach.py ...`)")
 
 
@@ -96,20 +106,67 @@ def load_protocol(build=None):
 
 
 # ---------------------------------------------------------------- config
-CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
-DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
+# One file for both coaches (coachlib.config owns it): {"hots": {...}, "ow": {...}}. The loader
+# is duplicated here in a few lines so the script still runs on its own under `uv run`.
+CONFIG_PATH = os.environ.get("COACHCLAUDE_CONFIG") or os.path.expanduser("~/.config/coachclaude/config.json")
+OLD_CONFIG_PATH = os.path.expanduser("~/.config/hotscoach/config.json")
+DATA_DIR = os.environ.get("HOTSCOACH_DATA") or os.path.expanduser("~/.local/share/coachclaude/hots")
+OLD_DATA_DIR = os.path.expanduser("~/.local/share/hotscoach")
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def load_config():
+def coachlib():
+    """The shared package (config, page renderer, skill installer, version). From a clone it sits
+    next to this file, so `uv run hotscoach.py` works without pip."""
+    if REPO_DIR not in sys.path:
+        sys.path.insert(0, REPO_DIR)
+    import coachlib.config, coachlib.install, coachlib.site, coachlib.version  # noqa: F401
+    return coachlib
+
+
+def version():
+    return coachlib().version.version()
+
+
+def dev_mode():
+    """Developer mode ({"dev": true} at the top of the config, or COACHCLAUDE_DEV=1): the skill may
+    edit this script when a rule misses. Off by default, so a released install stays fixed."""
+    env = os.environ.get("COACHCLAUDE_DEV")
+    if env is not None:
+        return env.strip().lower() in ("1", "true", "on", "yes")
+    return bool(_read_json(CONFIG_PATH).get("dev"))
+
+
+def _read_json(path):
     try:
-        with open(CONFIG_PATH) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, ValueError):
         return {}
 
 
+def load_config():
+    """The "hots" section; falls back to the pre-merge file so old installs keep working until setup."""
+    sec = _read_json(CONFIG_PATH).get("hots")
+    if sec is None and os.path.exists(OLD_CONFIG_PATH):
+        return _read_json(OLD_CONFIG_PATH)
+    return sec or {}
+
+
+def save_config(sec):
+    cfg = _read_json(CONFIG_PATH)
+    cfg["hots"] = sec
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=1)
+
+
 def configured(key, env):
     return os.environ.get(env) or load_config().get(key)
+
+
+def games_dir():
+    return os.path.join(DATA_DIR, "games")
 
 
 def candidate_replay_roots():
@@ -216,7 +273,8 @@ class Game:
             t = self.sec(e["_gameloop"])
             if n == "PlayerDeath":
                 self.deaths.append(dict(t=t, victim=ints(e, b"PlayerID")[0],
-                                        killers=[k for k in ints(e, b"KillingPlayer") if k],
+                                        # killer ids outside the 10 heroes (11/12) are neutral NPCs/AI
+                                        killers=[k for k in ints(e, b"KillingPlayer") if k in self.pid],
                                         x=fixed(e, b"PositionX")[0], y=fixed(e, b"PositionY")[0]))
             elif OBJECTIVE_RE.search(n):
                 self.objectives.append((t, n))
@@ -254,6 +312,8 @@ class Game:
                     ui += it[i]
                     if ui in tag2pid:
                         self.positions.append((self.sec(e["_gameloop"]), tag2pid[ui], it[i + 1], it[i + 2]))
+        self.revives = [(self.sec(e["_gameloop"]), tag2pid[e["m_unitTagIndex"]]) for e in tr
+                        if e["_event"].endswith("SUnitRevivedEvent") and e["m_unitTagIndex"] in tag2pid]
 
         self.score = {}
         for e in tr:
@@ -268,6 +328,11 @@ class Game:
     def stat(self, key, pid=None):
         vals = self.score.get(key)
         return vals[(pid or self.me["pid"]) - 1] if vals else None
+
+    def dead_at(self, pid, t):
+        """True if pid's last death before t has no respawn between it and t."""
+        died = [d["t"] for d in self.deaths if d["victim"] == pid and d["t"] <= t]
+        return bool(died) and not any(p == pid and died[-1] < rt <= t for rt, p in self.revives)
 
     def last_pos(self, pid, t):
         best = None
@@ -351,7 +416,7 @@ def analyze(g):
     absent = []
     for f in fights:
         ours = [x for x in f if g.pid[x["victim"]]["team"] == me["team"]]
-        if len(ours) < 2 or any(x["victim"] == my_pid for x in f):
+        if len(ours) < 2 or any(x["victim"] == my_pid for x in f) or g.dead_at(my_pid, ours[0]["t"]):
             continue
         cx = sum(x["x"] for x in ours) / len(ours); cy = sum(x["y"] for x in ours) / len(ours)
         mypos = g.near_pos(my_pid, ours[-1]["t"])
@@ -463,17 +528,69 @@ def print_report(m, deaths, notes):
         print(f"  * {n}")
 
 
+def analysis_dict(g, m, deaths, notes):
+    return dict(version=version(), metrics=m, deaths=deaths, notes=notes,
+                teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy") for p in g.players},
+                objectives=[(fmt(t), n) for t, n in g.objectives],
+                camps=[(fmt(t), camp, "us" if team == g.me["team"] else "them") for t, camp, team in g.camps],
+                structures=[(fmt(t), kind, "us" if team == g.me["team"] else "them") for t, kind, team in g.structures],
+                levels={f"{team}:{lvl}": fmt(t) for (team, lvl), t in g.levels.items()},
+                replay=os.path.basename(g.path), id=replay_id(g.path))
+
+
+def session_date(played):
+    """'2026-10-17 00.52' -> '2026-10-16': games before 06:00 belong to the evening before."""
+    import datetime as _dt
+    try:
+        d = _dt.datetime.strptime(played[:16], "%Y-%m-%d %H.%M")
+    except ValueError:
+        return played[:10]
+    if d.hour < 6:
+        d -= _dt.timedelta(days=1)
+    return d.strftime("%Y-%m-%d")
+
+
+def game_dir(path, m):
+    """<data>/games/<session date>/<YYYY-MM-DD HH.MM>_<map>_<hero>: analysis.json, timeline.txt, coaching.md."""
+    played = os.path.basename(path)[:16]
+    name = f"{played}_{norm(m['map'])}_{norm(m['hero'])}"
+    return os.path.join(games_dir(), session_date(played), name)
+
+
+def write_game_files(g, m, deaths, notes):
+    """The per-game folder the coach writes coaching.md into and the page reads. Idempotent."""
+    d = game_dir(g.path, m)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "analysis.json"), "w", encoding="utf-8") as f:
+        json.dump(analysis_dict(g, m, deaths, notes), f, indent=1)
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        print_timeline(g)
+    with open(os.path.join(d, "timeline.txt"), "w", encoding="utf-8") as f:
+        f.write(buf.getvalue())
+    return d
+
+
+def rebuild_site(quiet=True):
+    try:
+        out = build_site()
+        if not quiet:
+            print(f"page: {out}")
+    except Exception as e:            # the page is a convenience; the files are already on disk
+        print(f"page not rebuilt: {e}", file=sys.stderr)
+
+
 def cmd_analyze(a):
     g = Game(a.replay, a.player)
     m, deaths, notes = analyze(g)
     save(db(), a.replay, m)
+    d = write_game_files(g, m, deaths, notes)
     if a.json:
-        print(json.dumps(dict(metrics=m, deaths=deaths, notes=notes,
-                              teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy")
-                                     for p in g.players},
-                              objectives=[(fmt(t), n) for t, n in g.objectives]), indent=1))
+        print(json.dumps(analysis_dict(g, m, deaths, notes), indent=1))
     else:
         print_report(m, deaths, notes)
+        print(f"files: {d}")
+    rebuild_site()
 
 
 def cmd_batch(a):
@@ -481,8 +598,9 @@ def cmd_batch(a):
     seen = {r[0] for r in con.execute("SELECT id FROM games")}
     root = a.dir or configured("replay_dir", "HOTS_REPLAY_DIR")
     if not root:
-        sys.exit("no replay folder: pass DIR or run `hotscoach.py setup`")
+        sys.exit("no replay folder: pass DIR or run `hotscoach setup`")
     files = find_replays(root)
+    n = 0
     for f in files:
         if a.new_only and replay_id(f) in seen:
             continue
@@ -492,7 +610,16 @@ def cmd_batch(a):
             print(f"skip {os.path.basename(f)}: {e}", file=sys.stderr); continue
         m, deaths, notes = analyze(g)
         save(con, f, m)
-        print_report(m, deaths, notes)
+        d = write_game_files(g, m, deaths, notes)
+        n += 1
+        if a.quiet:
+            print(f"{os.path.basename(f)} -> {d}")
+        else:
+            print_report(m, deaths, notes)
+            print(f"files: {d}")
+    if not n:
+        print("nothing new")
+    rebuild_site()
 
 
 def cmd_trend(a):
@@ -524,7 +651,10 @@ def side_label(g, x):
 
 
 def cmd_timeline(a):
-    g = Game(a.replay, a.player)
+    print_timeline(Game(a.replay, a.player))
+
+
+def print_timeline(g):
     mt = g.me["team"]
     who = lambda p: ("YOU " if p is g.me else "") + p["hero"]
     print(f"== {g.map} ({fmt(g.length)}) - {'WIN' if g.me['win'] else 'LOSS'} ==")
@@ -636,31 +766,330 @@ def cmd_setup(a):
     else:
         print(f"  [ok] player: {player}")
 
-    # 4. save config + lessons file
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    # 4. save config + lessons file (moving a pre-merge install's config and data into place)
     cfg.update(player=player, replay_dir=root)
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    save_config(cfg)
     print(f"  [ok] config: {CONFIG_PATH}")
+    if os.path.exists(OLD_CONFIG_PATH):
+        os.replace(OLD_CONFIG_PATH, OLD_CONFIG_PATH + ".migrated")
+        print(f"       (old {OLD_CONFIG_PATH} renamed .migrated)")
     os.makedirs(DATA_DIR, exist_ok=True)
+    if os.path.isdir(OLD_DATA_DIR) and os.path.abspath(OLD_DATA_DIR) != os.path.abspath(DATA_DIR):
+        import shutil
+        for name in os.listdir(OLD_DATA_DIR):
+            dst = os.path.join(DATA_DIR, name)
+            if not os.path.exists(dst):
+                shutil.move(os.path.join(OLD_DATA_DIR, name), dst)
+                print(f"  [ok] moved {name} from {OLD_DATA_DIR}")
+        if not os.listdir(OLD_DATA_DIR):
+            os.rmdir(OLD_DATA_DIR)
     lessons = os.path.join(DATA_DIR, f"lessons-{player}.md")
     if not os.path.exists(lessons):
-        tmpl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                            "references", "lessons-template.md")
-        text = open(tmpl).read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
-        with open(lessons, "w") as f:
+        tmpl = os.path.join(str(coachlib().install.skill_dir("hots-coach")), "references", "lessons-template.md")
+        text = open(tmpl, encoding="utf-8").read() if os.path.exists(tmpl) else "# Lessons: <player>\n"
+        with open(lessons, "w", encoding="utf-8") as f:
             f.write(text.replace("<player>", player))
     print(f"  [ok] lessons: {lessons}")
-    print("\nDone. Try: hotscoach.py batch --new-only   or, in Claude Code: coach my last game")
+    print("\nDone. Try: hotscoach batch --new-only   or, in Claude Code: coach my last game")
+
+
+# ---------------------------------------------------------------- the page
+# The lessons file is the coach's permanent record: its "Session log" bullets are dated
+# takeaways per game or evening, and its pattern bullets cite games as "<Map> MM-DD [H:MM]".
+# The page shows those on the games they are about, so a game coached before reports were
+# written to disk still carries its notes.
+MAP_ALIASES = {        # map -> (case-insensitive names..., CASE-SENSITIVE short forms...)
+    "Cursed Hollow": (["cursed hollow"], ["CH"]), "Haunted Mines": (["haunted mines"], ["HM"]),
+    "Towers of Doom": (["towers of doom", "towers"], ["ToD"]), "Battlefield of Eternity": (["battlefield of eternity"], ["BoE"]),
+    "Blackheart's Bay": (["blackheart's bay", "blackheart", "bay"], []), "Infernal Shrines": (["infernal shrines"], ["IS"]),
+    "Garden of Terror": (["garden of terror", "garden"], []), "Tomb of the Spider Queen": (["tomb of the spider queen", "spider queen", "tomb"], []),
+    "Warhead Junction": (["warhead junction", "warhead"], []), "Dragon Shire": (["dragon shire"], []), "Sky Temple": (["sky temple"], []),
+    "Volskaya Foundry": (["volskaya foundry", "volskaya"], []), "Alterac Pass": (["alterac pass", "alterac"], []),
+    "Hanamura Temple": (["hanamura temple", "hanamura"], []), "Braxis Holdout": (["braxis holdout", "braxis"], []),
+    "Silver City": (["silver city"], []), "Industrial District": (["industrial district"], []), "Lost Cavern": (["lost cavern"], []),
+    "Braxis Outpost": (["braxis outpost"], []),
+}
+
+
+def _alias_re(map_name):
+    ci, cs = MAP_ALIASES.get(map_name, ([map_name.lower()], []))
+    parts = [r"(?i:" + re.escape(a) + ")" for a in ci] + [re.escape(a) for a in cs]
+    return r"\b(?:" + "|".join(parts) + r")\b"
+
+
+def _mentions_any_map(text, exclude):
+    for m, (ci, cs) in MAP_ALIASES.items():
+        if m == exclude:
+            continue
+        if re.search(_alias_re(m), text):
+            return True
+    return False
+
+
+def lessons_notes(text):
+    """-> (session_log, patterns): bullets of the Session log with their date range, and the
+    bullets of every other section with their heading. Continuation lines stay with their bullet."""
+    section, bullets = None, []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip()
+            continue
+        if section is None or line.startswith("<!--"):
+            continue
+        if line.startswith("- "):
+            bullets.append([section, line[2:].strip()])
+        elif line.strip() and bullets and bullets[-1][0] == section:
+            bullets[-1][1] += " " + line.strip()
+    log, patterns = [], []
+    for section, b in bullets:
+        if section.lower().startswith("session log"):
+            m = re.match(r"(\d{4}-\d{2}-\d{2})(?:/(\d{2}))?(?:\s+to\s+(\d{4}-\d{2}-\d{2}))?", b)
+            if not m:
+                continue
+            start = m.group(1)
+            end = m.group(3) or (start[:8] + m.group(2) if m.group(2) else start)
+            log.append({"start": start, "end": end, "text": b})
+        else:
+            patterns.append({"section": section, "text": b})
+    return log, patterns
+
+
+def notes_for_game(log, patterns, map_name, play_date, session_date, length_s=None, start="", siblings=()):
+    """The lessons bullets about one game: log entries whose range covers it and that name its
+    map (or no map at all), and pattern bullets citing '<map alias> MM-DD'. Two games on one
+    map in one evening are told apart by the length in '(Map, Hero, M:SS)' and by the start
+    time after the citation ('CH 10-09 00:37'); `siblings` = the other games' start times."""
+    alias = _alias_re(map_name)
+    mmdd = {play_date[5:], session_date[5:]}
+    out = []
+    for e in log:
+        if not (e["start"] <= play_date <= e["end"] or e["start"] <= session_date <= e["end"]):
+            continue
+        if re.search(alias, e["text"]):
+            m = re.search(r"\(" + alias + r",[^()]*?(\d+:\d{2})\)", e["text"])
+            if m and length_s is not None:
+                cited = int(m.group(1).split(":")[0]) * 60 + int(m.group(1).split(":")[1])
+                if abs(cited - length_s) > 2:
+                    continue
+            out.append(("Session log", e["text"]))
+        elif not _mentions_any_map(e["text"], None):
+            out.append(("Session log", e["text"]))
+    for p in patterns:
+        hit = False
+        for d in mmdd:
+            for m in re.finditer(alias + r"[^.;]{0,12}?\b(?:\d{4}-)?" + re.escape(d) + r"\b(?:\s+(\d{1,2}:\d{2}))?", p["text"]):
+                t = m.group(1)
+                if t and t != start and t in siblings:
+                    continue          # cites the other game of that map that evening
+                hit = True
+        if hit:
+            out.append((p["section"], p["text"]))
+    return out
+
+
+def notes_md(items):
+    if not items:
+        return None
+    return "\n\n".join(f"**{sec}:** {txt}" for sec, txt in items)
+
+
+def _hots_tree():
+    """The games folder as the tree coachlib.site renders (same shape as the Overwatch page)."""
+    from urllib.parse import quote
+    from coachlib.site import num, slug
+    player = configured("player", "HOTS_PLAYER") or ""
+    root = games_dir()
+    lessons_path = os.path.join(DATA_DIR, f"lessons-{player}.md")
+    lessons_text = open(lessons_path, encoding="utf-8").read() if os.path.exists(lessons_path) else ""
+    log, patterns = lessons_notes(lessons_text)
+    starts = defaultdict(set)         # (map slug, MM-DD) -> start times, to tell two same-map games apart
+    if os.path.isdir(root):
+        for sd in os.listdir(root):
+            for gn in (os.listdir(os.path.join(root, sd)) if os.path.isdir(os.path.join(root, sd)) else []):
+                parts = gn.split("_")
+                if len(parts) >= 3 and len(parts[0]) >= 16:
+                    for d in {gn[5:10], sd[5:]}:
+                        starts[(parts[1], d)].add(gn[11:16].replace(".", ":"))
+    rel = lambda p: quote(os.path.relpath(p, DATA_DIR).replace(os.sep, "/"), safe="/")
+    sec = lambda s: int(s.split(":")[0]) * 60 + int(s.split(":")[1]) if s and ":" in s else None
+    days = []
+    dates = sorted((d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))), reverse=True) if os.path.isdir(root) else []
+    for date in dates:
+        sdir = os.path.join(root, date)
+        summary = None
+        if os.path.exists(os.path.join(sdir, "coaching.md")):
+            summary = open(os.path.join(sdir, "coaching.md"), encoding="utf-8").read()
+        s = {"id": slug(date), "label": date, "date": date, "kind": "session", "games": [], "tables": [],
+             "title": f"Session {date}", "summary_md": summary, "nav_label": f"session {date}",
+             "sub": f'<a href="{rel(sdir)}" target="_blank">folder</a>'}
+        for gname in sorted(d for d in os.listdir(sdir) if os.path.isdir(os.path.join(sdir, d))):
+            gdir = os.path.join(sdir, gname)
+            an = _read_json(os.path.join(gdir, "analysis.json"))
+            if not an:
+                continue
+            m = an["metrics"]
+            res = "win" if m.get("win") else "loss"
+            coached = os.path.exists(os.path.join(gdir, "coaching.md"))
+            played = gname[:16].replace(".", ":")
+            gid = f"{s['id']}--{slug(gname)}"
+            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}",
+                 "result": res, "coached": coached, "processed": True,
+                 "sub": f"{played} · {fmt(m['length'])} · replay {an.get('replay', '')} · " + f'<a href="{rel(gdir)}" target="_blank">folder</a>',
+                 "cells": {"played": played, "map": {"text": m["map"], "href": f"#g/{gid}"},
+                           "result": {"text": res, "cls": f"res-{res}"}, "hero": m["hero"], "length": fmt(m["length"]),
+                           "deaths": num(m.get("deaths")), "dead_pct": num(m.get("pct_dead"), 1), "kp": num(m.get("kp")),
+                           "healing": num(m.get("healing")), "hero_damage": num(m.get("hero_damage")), "coached": "✓" if coached else ""},
+                 "warnings": [] if coached else ["Not coached yet. The hots-coach skill writes coaching.md here when it coaches the game."],
+                 "tables": [{"header": ["", "value"], "rows": [
+                     ["Deaths", num(m.get("deaths"))], ["Time dead", f"{fmt(m.get('time_dead') or 0)} ({num(m.get('pct_dead'), 1)} %)"],
+                     ["Kill participation", f"{num(m.get('kp'))} %"], ["Healing", num(m.get("healing"))],
+                     ["Teamfight healing", f"{num(m.get('teamfight_healing'))} ({num(m.get('tf_heal_pct'))} %)"],
+                     ["Clutch heals", num(m.get("clutch_heals"))], ["Hero damage", num(m.get("hero_damage"))],
+                     ["Damage taken", num(m.get("damage_taken"))], ["XP contribution", num(m.get("xp"))],
+                     ["Flags", f"first to die {m.get('first_deaths')} · picked off {m.get('picked_off')} · enemy half {m.get('enemy_half')} · "
+                               f"far from front {m.get('far_from_front')} · absent from lost fights {m.get('absent_fights', 0)}"]]}],
+                 "images": [], "links": [], "moments": [], "details": [],
+                 "timeline": {"duration": m.get("length") or 0, "ticks": 300,
+                              "deaths": [{"id": f"d{i + 1:02d}", "t": sec(d["t"]), "label": f"d{i + 1:02d} death {d['t']} <- {d['killers']}"}
+                                         for i, d in enumerate(an.get("deaths") or []) if sec(d["t"]) is not None],
+                              "marks": [{"t": sec(t), "lane": "top", "cls": "tl-obj", "label": f"{t} {n}"} for t, n in an.get("objectives") or [] if sec(t) is not None]
+                                       + [{"t": sec(t), "lane": "bottom", "cls": "tl-camp" if who == "us" else "tl-struct", "label": f"{t} camp {c} -> {who}"}
+                                          for t, c, who in an.get("camps") or [] if sec(t) is not None],
+                              "spans": []}}
+            if coached:
+                g["report_md"] = open(os.path.join(gdir, "coaching.md"), encoding="utf-8").read()
+            start = gname[11:16].replace(".", ":")
+            sibs = (starts[(norm(m["map"]), gname[5:10])] | starts[(norm(m["map"]), date[5:])]) - {start}
+            notes = notes_md(notes_for_game(log, patterns, m["map"], gname[:10], date, m.get("length"), start, sibs))
+            if notes:
+                g["notes_md"] = notes
+                g["notes_title"] = "From the lessons file (written at the time)"
+                if not coached:
+                    g["warnings"] = []
+                    g["cells"]["coached"] = "notes"
+            for i, d in enumerate(an.get("deaths") or []):
+                g["moments"].append({"id": f"d{i + 1:02d}", "kind": "death", "clock": d["t"], "video_t": None,
+                                     "title": f"d{i + 1:02d} {d['t']} · killed by {d['killers']}", "flags": d.get("flags") or [], "stills": [], "details": []})
+            if an.get("objectives"):
+                g["details"].append({"summary": f"Objectives ({len(an['objectives'])})", "pre": "\n".join(f"{t:>6}  {n}" for t, n in an["objectives"])})
+            if an.get("notes"):
+                g["details"].append({"summary": "Rule notes (from the script)", "html": "<ul>" + "".join(f"<li>{n}</li>" for n in an["notes"]) + "</ul>"})
+            tl = os.path.join(gdir, "timeline.txt")
+            if os.path.exists(tl):
+                g["details"].append({"summary": "Timeline (levels, XP by source, every death, objective, camp and structure)",
+                                     "pre": open(tl, encoding="utf-8").read()})
+            s["games"].append(g)
+        n = len(s["games"])
+        s["nav"] = f"{date} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
+        covering = [("Session log", e["text"]) for e in log
+                    if any(e["start"] <= d <= e["end"] for d in {date} | {g["dir"][:10] for g in s["games"]})]
+        if covering:
+            s["notes_md"] = notes_md(covering)
+            s["notes_title"] = "From the lessons file (written at the time)"
+        elif not summary and n > 1:
+            s["warn"] = "No session summary yet."
+        days.append({"date": date, "sessions": [s], "combined": []})
+    allg = [g for d in days for s in d["sessions"] for g in s["games"]]
+    tables = []
+    try:      # per-hero table from the game log: every game ever logged, not only the ones with folders
+        ms = [json.loads(r[0]) for r in db().execute("SELECT metrics FROM games ORDER BY played").fetchall()]
+        by = defaultdict(list)
+        for m in ms:
+            by[m["hero"]].append(m)
+        avg = lambda xs, k: sum(x.get(k) or 0 for x in xs) / len(xs)
+        tables.append({"title": "Per hero, every logged game", "header": ["hero", "games", "W-L", "deaths", "dead %", "KP %", "healing"],
+                       "rows": [[h, str(len(xs)), f"{sum(x['win'] for x in xs)}-{sum(not x['win'] for x in xs)}", num(avg(xs, 'deaths'), 1),
+                                 num(avg(xs, 'pct_dead'), 1), num(avg(xs, 'kp')), num(avg(xs, 'healing'))]
+                                for h, xs in sorted(by.items(), key=lambda kv: -len(kv[1]))]})
+    except Exception:
+        pass
+    lessons_md = lessons_text or None
+    other = None
+    ow = _read_json(CONFIG_PATH).get("ow") or {}
+    ow_page = os.path.join(ow.get("library") or os.path.expanduser("~/Videos/owcoach"), "coaching.html")
+    if os.path.exists(ow_page):
+        from pathlib import Path
+        other = {"title": "Overwatch 2", "href": Path(ow_page).as_uri()}
+    import datetime as _dt
+    return {"app": "hotscoach", "player": player, "title": f"{player} · Heroes of the Storm", "nav_home": f"{player} · all games",
+            "home_title": f"{player} · Heroes of the Storm coaching",
+            "home_sub": f"{len(allg)} games in {len(days)} sessions, {sum(1 for g in allg if g['coached'])} with a report, "
+                        f"{sum(1 for g in allg if g.get('notes_md'))} with notes from the lessons file · data <code>{DATA_DIR}</code> · "
+                        f"built {_dt.datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "columns": [{"key": "played", "label": "played", "align": "left"}, {"key": "map", "label": "map", "align": "left"},
+                        {"key": "result", "label": "result", "align": "left"}, {"key": "hero", "label": "hero", "align": "left"},
+                        {"key": "length", "label": "length"}, {"key": "deaths", "label": "deaths"}, {"key": "dead_pct", "label": "dead %"},
+                        {"key": "kp", "label": "KP %"}, {"key": "healing", "label": "healing"}, {"key": "hero_damage", "label": "hero dmg"},
+                        {"key": "coached", "label": "coached"}],
+            "days": days, "pages": [{"id": "lessons", "title": "Lessons", "md": lessons_md}], "tables": tables,
+            "notes": ["Numbers come from the replay's tracker events (hotscoach analyze); reports are the coach's text, unedited.",
+                      "A session is one evening: games before 06:00 count to the day before."],
+            "other": other, "generated": _dt.datetime.now().isoformat(timespec="minutes"), "version": version()}
+
+
+def build_site(out=None):
+    return coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+
+
+def cmd_site(a):
+    out = build_site(a.out)
+    print(f"site: {out}")
+    if a.open:
+        import webbrowser
+        webbrowser.open(out.as_uri())
+
+
+def cmd_install_skill(a):
+    """Both skills into ~/.claude/skills: linked from a checkout, copied from a release install."""
+    mode = "link" if a.link else "copy" if a.copy else "auto"
+    for line in coachlib().install.install_skills(mode):
+        print(line)
+
+
+def cmd_config(a):
+    """The resolved settings, or `hotscoach config dev on|off`."""
+    if a.value is not None:
+        if a.key != "dev":
+            sys.exit("config: only `dev` can be set here (hotscoach config dev on|off); the rest comes from setup")
+        cfg = coachlib().config
+        try:
+            on = cfg.parse_on_off(a.value)
+        except ValueError as e:
+            sys.exit(f"config: {e}")
+        p = cfg.set_dev(on)
+        print(f"dev: {'on' if on else 'off'} ({p})")
+        return
+    sec = load_config()
+    r = {"config": CONFIG_PATH, "player": sec.get("player"), "replay_dir": sec.get("replay_dir"), "data": DATA_DIR,
+         "db": os.environ.get("HOTSCOACH_DB", os.path.join(DATA_DIR, "games.db")), "skill": str(coachlib().install.skill_dir("hots-coach")),
+         "dev": "on" if dev_mode() else "off", "version": version()}
+    if a.key:
+        if a.key not in r:
+            sys.exit(f"config: no key {a.key!r} (one of {', '.join(r)})")
+        print(r[a.key] if r[a.key] is not None else "")
+    else:
+        print(json.dumps(r, indent=1))
 
 
 def main():
     ap = argparse.ArgumentParser(description="Rule-based HotS replay coach")
+    ap.add_argument("--version", action="version", version=f"coachclaude {version()}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("analyze"); p.add_argument("replay"); p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_analyze)
     p = sub.add_parser("batch"); p.add_argument("dir", nargs="?"); p.add_argument("--new-only", action="store_true")
+    p.add_argument("--quiet", action="store_true", help="one line per game instead of the report")
     p.set_defaults(fn=cmd_batch)
+    p = sub.add_parser("site", help="rebuild <data>/coaching.html, the page over every game")
+    p.add_argument("--out"); p.add_argument("--open", action="store_true"); p.set_defaults(fn=cmd_site)
+    p = sub.add_parser("install-skill", help="put the hots-coach and ow-coach skills into ~/.claude/skills "
+                                             "(linked from a checkout, copied from a release install)")
+    p.add_argument("--link", action="store_true", help="link even from an installed package")
+    p.add_argument("--copy", action="store_true", help="copy even from a checkout (what a release install does)")
+    p.set_defaults(fn=cmd_install_skill)
+    p = sub.add_parser("config", help="the resolved settings (or one: hotscoach config dev); hotscoach config dev on|off")
+    p.add_argument("key", nargs="?"); p.add_argument("value", nargs="?", help="only for dev: on or off")
+    p.set_defaults(fn=cmd_config)
     p = sub.add_parser("timeline"); p.add_argument("replay"); p.set_defaults(fn=cmd_timeline)
     p = sub.add_parser("positions"); p.add_argument("replay")
     p.add_argument("--start", required=True); p.add_argument("--end", required=True)
@@ -674,7 +1103,7 @@ def main():
         sub.choices[name].add_argument("--player", default=configured("player", "HOTS_PLAYER"))
     a = ap.parse_args()
     if a.cmd in ("analyze", "batch", "timeline", "positions") and not a.player:
-        sys.exit("no player configured: run `hotscoach.py setup` (or pass --player)")
+        sys.exit("no player configured: run `hotscoach setup` (or pass --player)")
     a.fn(a)
 
 

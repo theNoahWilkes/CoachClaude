@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coachclaude"
+version = "0.2.0"
+description = "Post-game coaching for Overwatch 2 and Heroes of the Storm, driven by Claude Code skills"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["markdown-it-py>=3"]
+
+[project.optional-dependencies]
+ow = ["numpy", "opencv-python"]
+hots = ["mpyq>=0.2.5", "six>=1.14", "heroprotocol @ git+https://github.com/Blizzard/heroprotocol"]
+
+[project.scripts]
+owcoach = "owcoach.cli:main"
+hotscoach = "hotscoach:main"
+
+[tool.setuptools]
+packages = ["coachlib", "owcoach"]
+py-modules = ["hotscoach"]
+
+[tool.setuptools.package-data]
+owcoach = ["assets/*"]
+coachlib = ["skills/*/SKILL.md", "skills/*/references/*.md"]

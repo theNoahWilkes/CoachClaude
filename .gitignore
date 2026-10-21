@@ -1,5 +1,9 @@
 *.StormReplay
 *.db
 __pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
 lessons-*.md
-!.claude/skills/hots-coach/references/lessons-template.md
+!coachlib/skills/*/references/lessons-template.md
