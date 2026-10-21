@@ -35,21 +35,13 @@ Overwatch pipeline internals, stage by stage, are in [docs/ow/pipeline.md](docs/
 ## Where the code still lags the docs
 
 These were decided on 2026-10-21 and are not built yet. Code that disagrees with an ADR here is
-known debt, not precedent. Strike each item when it lands.
+known debt, not precedent. Each has an issue; strike the line when it closes.
 
-- [ ] Both coaches follow the focus loop in ADR 0003: check-in, single proposal, pattern finder
-      separate from the focus grader, decline timeouts, retired focus. Today Overwatch uses a
-      proposal menu (`owcoach focus N`) and HotS edits its own focus.
-- [ ] Coaching runs enforce dev mode (ADR 0005).
-- [ ] A session is one sitting in Overwatch too: retire one-recording sessions and "combined"
-      summaries.
-- [ ] "match" replaces "game" for a single match in CLIs, flags (`--games`), the page and HotS
-      folder names.
-- [ ] User-facing verbs match across `owcoach` and `hotscoach`; Overwatch diagnostics move
-      under a developer group.
-- [ ] The lessons-file section is "Session log" in both games (the Overwatch template says
-      "Sessions"), and `.gitignore` covers both lessons file names.
-- [ ] Leftovers: the half-edited sentence in `coachlib/skills/ow-coach/SKILL.md` (~line 101),
-      the stale `scripts/coach_session.sh` reference in that skill, `requires-python` differs
-      between `hotscoach.py` (3.9) and `pyproject.toml` (3.10), and `hotscoach.py` duplicates
-      coachlib's config and dev-mode helpers.
+- Focus loop in both coaches, ADR 0003 (#4)
+- Dev mode enforced in coaching runs, ADR 0005 (#5)
+- Overwatch session = one sitting, not one recording (#6)
+- "match" for a single match across CLIs, page and skills (#7)
+- User-facing verb parity, ADR 0001 (#8)
+- Generic coaching requests ambiguous between the two skills (#9)
+- Whether `hotscoach.py` depends on coachlib, ADR 0009 (#10)
+- Small doc and config leftovers (#11)
