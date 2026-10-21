@@ -394,8 +394,22 @@ flow (`focus.py`, `owcoach focus`): [ADR 0003](../adr/0003-focus-loop.md).
     `packet_slim.json`, `notes/all.md`, two Reads in one message and a one-line reply, plus low
     effort, the writer took 96-134 s, matches 5.4-9.6 min (was 7.2-14.0), $51.01 for the 7
     (was $62.32); equal on 11 of 12 labels.
-  - Sonnet readers were about 25 % cheaper, not faster, and worse on 3 of 12 labels; Opus
-    readers were kept. If cost matters, fewer pieces (3 deaths per reader) is the lever.
+  - Reader model: Opus is kept. Decided 2026-10-21 from a three-arm A/B (Opus, Sonnet 5.5,
+    Haiku 5.5 readers; 5 labelled matches, 9 deaths scored blind), recorded in full on
+    [issue #20](https://github.com/theNoahWilkes/CoachClaude/issues/20). Sonnet tied Opus
+    on quality (44/90 each) for 25 % less at list price but 15 % slower, and used as much
+    of the plan's five-hour window as Opus did: the window tracks token volume, not price,
+    so a cheaper reader model saves a subscriber nothing. Haiku scored 36/90, lost two lever
+    labels and read movement wrong in 6 of 9 deaths. The first A/B (2026-10-16, Sonnet
+    readers, resumed after a usage-limit cut) had found about -25 % and 3 of 12 labels lost.
+  - Where the cost goes (11 runs, 2026-10-16 to 2026-10-20; split per agent from the
+    stream-json logs): overview readers 31 %, main process 26 %, death readers 25 %, writer
+    12 %, ults 5 %; by token type cache writes 58 %, output 30 %, cache reads 12 %. Images
+    are ~300k tokens a match. Every arm of the A/B scored about half against the labels,
+    wrong on movement in 4-6 of 9 deaths and right on the lever once in 27: the quality
+    ceiling is the movement line and the writer's lever judgement, not the reader model.
+    Next cost levers are token volume (briefs built by `owcoach` with one `claude -p` per
+    piece, a smaller detail-still crop now the HUD is read locally, fewer first-pass stills).
 - **Timing:** subagents start ~8 s apart even when launched in one message, and about 20 can
   run at once. On new footage (three one-match recordings, 2026-10-17) the local stages took
   1.5-3.5 min per recording and coaching 5.6-8.7 min and $4.41-7.98 per match.
