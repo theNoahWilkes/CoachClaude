@@ -249,7 +249,8 @@ class Game:
             t = self.sec(e["_gameloop"])
             if n == "PlayerDeath":
                 self.deaths.append(dict(t=t, victim=ints(e, b"PlayerID")[0],
-                                        killers=[k for k in ints(e, b"KillingPlayer") if k],
+                                        # killer ids outside the 10 heroes (11/12) are neutral NPCs/AI
+                                        killers=[k for k in ints(e, b"KillingPlayer") if k in self.pid],
                                         x=fixed(e, b"PositionX")[0], y=fixed(e, b"PositionY")[0]))
             elif OBJECTIVE_RE.search(n):
                 self.objectives.append((t, n))
@@ -287,6 +288,8 @@ class Game:
                     ui += it[i]
                     if ui in tag2pid:
                         self.positions.append((self.sec(e["_gameloop"]), tag2pid[ui], it[i + 1], it[i + 2]))
+        self.revives = [(self.sec(e["_gameloop"]), tag2pid[e["m_unitTagIndex"]]) for e in tr
+                        if e["_event"].endswith("SUnitRevivedEvent") and e["m_unitTagIndex"] in tag2pid]
 
         self.score = {}
         for e in tr:
@@ -301,6 +304,11 @@ class Game:
     def stat(self, key, pid=None):
         vals = self.score.get(key)
         return vals[(pid or self.me["pid"]) - 1] if vals else None
+
+    def dead_at(self, pid, t):
+        """True if pid's last death before t has no respawn between it and t."""
+        died = [d["t"] for d in self.deaths if d["victim"] == pid and d["t"] <= t]
+        return bool(died) and not any(p == pid and died[-1] < rt <= t for rt, p in self.revives)
 
     def last_pos(self, pid, t):
         best = None
@@ -384,7 +392,7 @@ def analyze(g):
     absent = []
     for f in fights:
         ours = [x for x in f if g.pid[x["victim"]]["team"] == me["team"]]
-        if len(ours) < 2 or any(x["victim"] == my_pid for x in f):
+        if len(ours) < 2 or any(x["victim"] == my_pid for x in f) or g.dead_at(my_pid, ours[0]["t"]):
             continue
         cx = sum(x["x"] for x in ours) / len(ours); cy = sum(x["y"] for x in ours) / len(ours)
         mypos = g.near_pos(my_pid, ours[-1]["t"])
