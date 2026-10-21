@@ -143,15 +143,11 @@ def cmd_focus(a):
 
 
 def cmd_notes(a):
-    """Concatenate a game's reader notes into notes/all.md, in reading order, for the writer."""
-    import re
-    nd = Path(a.game) / "packet" / "notes"
-    files = sorted(nd.glob("overview_*.md"), key=lambda p: p.name) + sorted(
-        (p for p in nd.glob("d*.md") if re.fullmatch(r"d\d+\.md", p.name)), key=lambda p: p.name) + [p for p in [nd / "ults.md"] if p.exists()]
-    parts = [f"<!-- {p.name} -->\n" + p.read_text(encoding="utf-8").rstrip() + "\n" for p in files]
-    (nd / "all.md").write_text(f"# All notes for {Path(a.game).name} ({len(files)} files, in reading order)\n\n" + "\n".join(parts), encoding="utf-8")
-    print(f"notes: {len(files)} files -> {nd / 'all.md'}")
-
+    """Concatenate a game's reader notes into notes/all.md, in reading order, for the writer
+    (the driver does this itself; the command is for a hand-run writer)."""
+    from .briefs import write_all_notes
+    out = write_all_notes(Path(a.game))
+    print(f"notes -> {out}")
 
 def cmd_trend(a):
     from .history import format_trend, trend
@@ -342,7 +338,7 @@ def cmd_coach(a):
             raise SystemExit("not started (pass --yes to skip the question)")
     combined = a.sessions_summary or (len(sessions) > 1 and not a.session)   # several new one-game sessions -> one summary
     res = coach(sessions, games, model=a.model, effort=a.effort, writer_effort=a.writer_effort, reader_model=a.reader_model,
-                summary=a.summary, combined=combined, role=a.role)
+                summary=a.summary, combined=combined, role=a.role, parallel=a.parallel)
     print(f"done: {res['games']} games in {res['games_s']}s, total {res['total_s']}s")
     for s in res["summaries"]:
         print(f"  {s}")
@@ -492,6 +488,7 @@ def main(argv=None):
     s.add_argument("--sessions-summary", action="store_true", help="one summary over all the sessions given")
     s.add_argument("--role", help="trend filter (e.g. support)")
     s.add_argument("--jobs", type=int, default=2, help="decode jobs for --new processing")
+    s.add_argument("--parallel", type=int, default=12, help="claude processes at once (one per piece)")
     s.add_argument("--yes", "-y", action="store_true", help="don't ask before spending")
     s.set_defaults(fn=cmd_coach)
 
