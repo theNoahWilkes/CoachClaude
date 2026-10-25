@@ -29,6 +29,8 @@ one starts with a new ADR that supersedes it. The ones most often relevant:
 - **Facts vs judgement** ([0004](docs/adr/0004-facts-vs-judgement.md)). The CLI extracts facts
   deterministically and at no cost. The coach only judges. Each record has one owner.
 - **Dev mode is enforced in code** ([0005](docs/adr/0005-dev-mode-enforced-in-code.md)).
+- **Coach a few moments; each input earns its place**
+  ([0012](docs/adr/0012-coach-a-few-moments.md)). Measure what an input adds before adding it.
 
 Overwatch pipeline internals, stage by stage, are in [docs/ow/pipeline.md](docs/ow/pipeline.md).
 
@@ -47,4 +49,7 @@ known debt, not precedent. Strike each item when it lands.
       folder names.
 - [ ] User-facing verbs match across `owcoach` and `hotscoach`; Overwatch diagnostics move
       under a developer group.
+- [ ] Coaching follows ADR 0012 (decided 2026-10-25): text triage picks about five moments per
+      session, no whole-match overview skim outside dev mode, focus tests from the preprocessor,
+      match reports reduced to facts, verdict and stoplight in both games.
 - [ ] Leftover: `hotscoach.py` duplicates coachlib's config and dev-mode helpers.

@@ -19,5 +19,7 @@ every image was read once.
   parallel Reads). Pieces are big because subagents start ~8 s apart even when launched in one
   message.
 - Finished notes files are skipped, so a run cut off by a usage limit resumes where it stopped.
-- The standing policy on cost: keep information over saving tokens, and mark overspend with a
-  `COST:` comment instead of trimming it.
+- ~~The standing policy on cost: keep information over saving tokens, and mark overspend with a
+  `COST:` comment instead of trimming it.~~ Superseded by
+  [0012](0012-coach-a-few-moments.md): each input earns its place by measured value, and
+  readers read only the shortlisted moments and focus tests.
