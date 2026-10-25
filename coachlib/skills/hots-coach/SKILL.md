@@ -89,9 +89,9 @@ read in plain language, and the single habit that would have changed the most ga
 **Write it down as well as saying it.** Each game's coaching goes, as written, to
 `coaching.md` in that game's folder (the `files:` path from `analyze`/`batch`; start it with
 a `# <Map> (<hero>), <Win|Loss>, <length>` heading). The session summary goes to
-`coaching.md` in the session folder (`games/<session date>/`). Then run `hotscoach site` so
-the page picks them up, and name `~/.local/share/coachclaude/hots/coaching.html` at the end of
-the reply. The chat text and the files say the same thing; the files are what the player
+`coaching.md` in the session folder (`games/<session date>/`). Then run `hotscoach site --open` so
+the page picks them up and opens in the browser, and end the reply by saying it's open (the
+CoachClaude link on the desktop opens it again later). The chat text and the files say the same thing; the files are what the player
 reads back later.
 
 Tone: peer-to-peer, direct, no excessive praise or hedging. If the data can't support a
