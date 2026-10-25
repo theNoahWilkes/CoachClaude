@@ -122,7 +122,8 @@ so no report repeats them.
 **The match report** (`packet/coaching.md`, by the writer) is short, in exactly this order:
 - **The verdict:** three sentences on how the match went and what decided it. Often team-level,
   e.g. a lost first fight on every point, or overtime lost to a stagger.
-- **Focus:** one line per focus in the lessons file: a stoplight (🟢 green, 🟡 amber, 🔴 red,
+- **Focus:** one line per focus in the lessons file, named in at most six words (the full wording
+  is in the lessons file): a stoplight (🟢 green, 🟡 amber, 🔴 red,
   ⚪ not tested) by the counting rule in `references/rubric.md` ("Focus grade"), the count, and
   the clocks or death ids of its tests, held and broken. No reasons: those go up to the session
   summary. If the match was played before the focus was set, say the stoplight is retroactive.
@@ -142,7 +143,9 @@ three **moments** of the match most worth the player's time.
   happened, what it shows, and what to do next time or keep doing. A mundane death doesn't make
   the list because nothing better turned up; four strong moments beat five padded ones.
 - `## Focus`: for each focus, the session's stoplight and a short paragraph that says what the
-  focus tests showed, in coach talk, with the clocks (`mNN 5:18`). For example: "Both good and
+  focus tests showed, in coach talk. Pick the two or three tests that show it best, good and
+  bad, with their clocks (`mNN 5:18`); don't list every test, the match reports' stoplights
+  already do. For example: "Both good and
   bad: at m02 5:18 you broke line of sight, healed yourself and got the kill, but at m02 5:50
   you died in the open with no cooldowns and cover a step to your left." A clean focus is "no
   problems observed". When it wasn't tested, say so and what would have tested it.
@@ -152,7 +155,7 @@ three **moments** of the match most worth the player's time.
 - `## Next`: the single habit that would have changed the most matches, as a trigger and an
   action, and that the focus proposal is waiting when it is.
 
-**Voice.** Peer to peer, direct, no excessive praise or hedging. Plain words over numbers: no HP
+**Voice.** Talk to the player as "you", in the match report and the summary alike. Peer to peer, direct, no excessive praise or hedging. Plain words over numbers: no HP
 values, slot names, percentages or counts in the prose unless the number is the point. Name
 abilities by what they do for the player ("your escape", "Fade") rather than by HUD slot. If the
 data can't support a claim, say it's an inference.

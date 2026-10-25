@@ -42,11 +42,13 @@ Skill: {{SKILL_DIR}}/SKILL.md. Read section 3 from "What the writer does", secti
    stills and clip, so the report doesn't repeat them:
 
    # <map> <result> <score>
-   <the verdict: three sentences on how the match went and what decided it, in plain words>
+   <the verdict: three sentences on how the match went and what decided it, in plain words,
+   talking to the player as "you">
 
    ## Focus
-   - <stoplight> **<the focus, as worded in the lessons file>**: <held N of M>, then the clocks or
-     death ids of its tests, held ones and broken ones
+   - <stoplight> **<the focus in at most six words, e.g. "Wall when the escape is down">**: <held
+     N of M>, then the clocks or death ids of its tests, held ones and broken ones (for a focus
+     with parts, one short count per part)
    (one line per focus; the stoplight is 🟢 green, 🟡 amber, 🔴 red or ⚪ not tested, by the
    rubric's "Focus grade". No reasons here: they go to the session summary.)
 
