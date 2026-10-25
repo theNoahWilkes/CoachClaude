@@ -67,6 +67,9 @@ Write-Host 'done'
 # GOP of the recording kept so seeking to a moment stays instant.
 CQ = 23
 GOP_S = 0.5
+# p3 is 1.9x faster than p5 at the same size, SSIM 0.9929 vs 0.9936 (3080 Ti, 2026-10-25);
+# CQ barely moves the size here (19..27: 1.65..1.41 GB per 10 min)
+PRESET = "p3"
 
 
 def video_mode(cfg: dict, video: str = "auto") -> str:
@@ -111,7 +114,7 @@ def video_args(cfg: dict, mode: str) -> tuple[list[str], list[str]]:
     fps = meta.get("avg_fps") or meta.get("r_fps") or 60   # VFR: r_fps reads 120 on a 60 fps recording
     return pre, maps + [
         "-vf", "crop={}:{}:{}:{}".format(*cfg["crop"]) + (",format=p010le" if ten else ""),
-        "-c:v", "hevc_nvenc", "-preset", "p5", "-tune", "hq", "-rc", "vbr", "-cq", str(CQ), "-b:v", "0",
+        "-c:v", "hevc_nvenc", "-preset", PRESET, "-tune", "hq", "-rc", "vbr", "-cq", str(CQ), "-b:v", "0",
         "-profile:v", "main10" if ten else "main", "-g", str(max(1, round(fps * GOP_S))),
         *color, "-tag:v", "hvc1", "-c:a", "copy", "-movflags", "+faststart"]
 

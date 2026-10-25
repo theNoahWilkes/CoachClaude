@@ -75,10 +75,10 @@ Every CACHE argument also accepts the recording path or its bare stem (`config.r
     is still 5120 wide inside; Edge, VLC and ffmpeg honour the window (checked 2026-10-25).
     ffmpeg-family decoders crop left/top only to an aligned offset unless `-flags unaligned`;
     x=832 is aligned, other geometries may keep a sliver of bar there.
-  - `encode`: re-encode the crop on the GPU (`hevc_nvenc`, CQ 23, Main10 with the recording's
-    HDR10 colour tags, 0.5 s GOP, audio copied). About 1/3 the size, but NVENC-bound at ~1.9x
-    realtime on a 3080 Ti (a 69 min session: 37 min; cuvid cropping on the GPU and two encodes
-    at once gained under 2%). It cuts frame-exact at `clip_offset`; a copy starts at the
+  - `encode`: re-encode the crop on the GPU (`hevc_nvenc` preset p3, CQ 23, Main10 with the
+    recording's HDR10 colour tags, 0.5 s GOP, audio copied). About 1/3 the size; NVENC-bound
+    at ~3.5x realtime on a 3080 Ti (p5 was 1.85x at the same size, SSIM 0.9936 vs 0.9929 for
+    p3; cuvid cropping on the GPU and two encodes at once gained under 2%, one NVENC engine). It cuts frame-exact at `clip_offset`; a copy starts at the
     keyframe before it.
   - `copy`: the old plain stream copy, bars kept.
   `match.json` → `clip_video` says which (`copy` when absent). An existing `match.mp4` is only
