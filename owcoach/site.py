@@ -156,8 +156,9 @@ def _stats_table(m: dict) -> dict:
         note.append("Death flags: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in m["death_flags"].items()) + ".")
     if m.get("killed_by"):
         note.append("Killed by (kill-feed names): " + ", ".join(f"{k} ×{v}" for k, v in m["killed_by"].items()) + ".")
+    note.append("Partner = your team's other player in your role, enemies = the average of theirs, both per 10.")
     note.append(f"A {NOT_READ} means it wasn't read off the final scoreboard.")
-    return {"header": ["", "game", "per 10", "other same role", "enemy same role"], "rows": rows,
+    return {"header": ["", "game", "per 10", "partner", "enemies"], "rows": rows,
             "note": " ".join(html.escape(x) for x in note)}
 
 
