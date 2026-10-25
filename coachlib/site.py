@@ -21,6 +21,9 @@ collect_hots) decides the content and hands over this shape:
   detail:  summary, md | pre | html
   page:    id, title, nav, intro (html) | None, md
 
+A link to `#g/<game id>@<seconds>` opens that game's page and plays its clip from that time
+(the collector writes these into report and summary markdown, so a clock in the text is a clip).
+
 The sidebar lists one row per day, which is one session in the glossary's sense (one sitting):
 its date and win-loss record, with that day's matches under it. The day row opens a day page
 with every summary of the day; the collector's sessions and combined summaries are not sidebar
@@ -310,22 +313,27 @@ JS = """
 (function(){
   var pages=document.querySelectorAll('.page'),links=document.querySelectorAll('nav a[data-page]');
   function show(){
-    var h=location.hash.slice(1)||'home',id='p-'+h.replace(/\\//g,'--'),hit=false;
+    var h=location.hash.slice(1)||'home',at=h.indexOf('@'),t=at<0?null:parseFloat(h.slice(at+1));
+    if(at>=0)h=h.slice(0,at);
+    var id='p-'+h.replace(/\\//g,'--'),hit=false;
     pages.forEach(function(p){var on=p.id===id;p.classList.toggle('cur',on);hit=hit||on;});
     if(!hit){pages.forEach(function(p){p.classList.toggle('cur',p.id==='p-home');});h='home';}
     links.forEach(function(a){var on=a.getAttribute('data-page')===h;a.classList.toggle('cur',on);
       if(on){var d=a.closest('details');if(d)d.open=true;a.scrollIntoView({block:'nearest'});}});
     window.scrollTo(0,0);
+    if(hit&&t!==null&&!isNaN(t)&&h.indexOf('g/')===0)seek('v-'+h.slice(2),t);
   }
-  window.addEventListener('hashchange',show);show();
+  window.addEventListener('hashchange',show);
   function seek(vid,t){var v=document.getElementById(vid);if(!v)return;
     v.scrollIntoView({block:'center'});
     var go=function(){try{v.currentTime=t;}catch(e){}v.play&&v.play().catch(function(){});};
     if(v.readyState>0)go();else{v.addEventListener('loadedmetadata',go,{once:true});v.load();}}
   document.addEventListener('click',function(e){
     var b=e.target.closest('button.seek');if(b){seek(b.getAttribute('data-video'),parseFloat(b.getAttribute('data-t')));return;}
+    var a=e.target.closest('a[href^="#"]');if(a&&a.getAttribute('href')==location.hash&&a.getAttribute('href').indexOf('@')>0){e.preventDefault();show();return;}
     var m=e.target.closest('[data-moment]');if(m){var pg=m.closest('.page');var el=pg&&pg.querySelector('[id$="-'+m.getAttribute('data-moment')+'"]');if(el)el.scrollIntoView({block:'start'});}
   });
+  show();
 })();
 """
 

@@ -56,8 +56,8 @@ if something is missing from the packet that the pipeline could extract, say so 
 
 Read `lessons.md` in the profile dir (create it from `references/lessons-template.md` if missing). It
 holds recurring patterns and the **current focus**. Connect the coaching to it: call out when an
-old pattern repeats and when it didn't. Every game report grades the current focus (step 4), so
-note what situation would test it before you look at the game.
+old pattern repeats and when it didn't. Every match report gives the current focus a stoplight
+(section 4), so note what situation would test it before you look at the match.
 
 The focus is the player's choice, not yours: you grade it, you never reword it (section 5 and
 `references/focus-proposal.md`). If `focus_proposal.md` exists in the profile dir, the player hasn't
@@ -101,66 +101,76 @@ hand (ADR 0011).
   than its notes is skipped whole, so a run that was cut off resumes where it stopped.
 
 What the writer does, in its own context:
-- Read every notes file of its game: the overview chunks in order, then the deaths, then the
+- Read every notes file of its match: the overview chunks in order, then the deaths, then the
   ults. Check that each death's notes agree with the overview cells before it. It may open a few
-  stills itself, at most 6 per game, in two cases: two notes conflict, or a claim backs a habit
-  it will recommend. It says so in the report when it does.
+  stills itself, at most 6 per match, in two cases: two notes conflict, or a claim backs a moment
+  it nominates. It says so in the report when it does.
 - Judge each death and ult against `references/rubric.md`. The categories and verdicts in the
-  notes are a first read. Keep, change or merge them with the whole game in view: a death that
+  notes are a first read. Keep, change or merge them with the whole match in view: a death that
   looks avoidable on its own may be a stagger after a lost fight. The flags are leads, not
   verdicts; the stills decide. Don't name an ability or a hero that the notes mark unreadable.
+- Most of that judgement stays in `notes/summary.md` as one line per death, for the patterns and
+  the lessons file. The match report says little; the session summary says the rest (ADR 0012).
 
 ## 4. Write the coaching
 
-The writer writes each game's report to `packet/coaching.md` in the game folder. Per game, in
-this order, in prose with short lists only where they help:
+The coach picks a few moments for the whole session and says plainly what they show, the way a
+coach reviewing tape does. Mundane deaths and fights are not coached. The page already shows the
+cold facts of every match (final scoreboard, stats table, timeline, every death's stills and clip),
+so no report repeats them.
 
-- **Stats table first:** deaths, time dead %, healing/10, damage/10 for the player, next to the
-  other support and the enemy supports' average. One line on what stands out.
-- **One-line verdict:** what decided the game. This is often team-level, e.g. a lost first fight
-  on every point, or overtime lost to a stagger.
-- **Focus check:** the current focus from the lessons file, graded **Improved**, **Mixed**, **Not
-  improved**, or **Not tested** by the counting rule in `references/rubric.md` ("Focus grade"),
-  with the count and the clocks of the situations that tested it, both the held and the broken
-  ones (deaths and overview cells). Results and death counts alone don't establish
-  improvement; judge the behaviour in comparable situations. If the game was played before the focus was set, say the grade is retroactive.
-- **The deaths,** each with id and clock (`d04 3:00`), the killer (with their hero if the kill
-  cam shows it), the concrete cause you saw in the stills, and its **category** from the rubric:
-  Recognition, Decision, Execution, Positioning, Resource discipline, or No credible lever (more
-  than one if it fits). Group them: avoidable versus no credible lever (team already losing,
-  burst with nothing to answer it; nothing the player could reasonably do).
-- **Ult use:** holds, deaths with ult, and whether uses landed in fights that mattered.
-- **What went well:** the numbers (deaths per 10 min, time dead, healing versus the other
-  support), plus specific moments from the overview with clocks: fights won, good positioning,
-  ults that landed. These are the behaviours to keep. No praise padding.
-- **At most 1–3 habits to change,** each with a trigger, e.g. "when the counter shows you're down
-  a player and you're the last support, back off to the next cover before healing", not "position
-  better".
+**The match report** (`packet/coaching.md`, by the writer) is short, in exactly this order:
+- **The verdict:** three sentences on how the match went and what decided it. Often team-level,
+  e.g. a lost first fight on every point, or overtime lost to a stagger.
+- **Focus:** one line per focus in the lessons file, named in at most six words (the full wording
+  is in the lessons file): a stoplight (🟢 green, 🟡 amber, 🔴 red,
+  ⚪ not tested) by the counting rule in `references/rubric.md` ("Focus grade"), the count, and
+  the clocks or death ids of its tests, held and broken. No reasons: those go up to the session
+  summary. If the match was played before the focus was set, say the stoplight is retroactive.
+- **Pipeline issues** (section 7), or "None."
 
-Cite moments by id and clock so the player can find them in `moments.m3u` (VLC) or in
-`match.mp4` at `video_t`.
+Nothing else: no per-death write-ups, no ult section, no "what went well", no habits. The writer
+puts what is worth saying in `notes/summary.md`: the focus tests in plain words and the one to
+three **moments** of the match most worth the player's time.
 
-For a multi-game session, finish with a session summary:
-- The record.
-- A table of the session's per-10 stats vs the baseline from `owcoach trend`, with its verdict
-  per metric. Call out only changes marked `better` or `worse`; say "normal variation" otherwise,
-  and "not enough history yet" when there are fewer than 5 baseline games. Mention hero mix when
-  it explains a change (e.g. more Lifeweaver means more healing, less damage).
-- The death-flag counts across games.
-- The single habit that would have changed the most games. Write it to
-`<session>/coaching.md`. This part is yours, from the writers' `notes/summary.md` files and
-`trend.json`.
+**The session summary** (`<session>/coaching.md`, by the summary process, from the writers'
+`notes/summary.md` files and `trend.json`), in this order:
+- `# Session <date>: <record>`, then two or three sentences on how the session went.
+- `## Moments`: about five for the whole session, picked from the matches' nominations: bad
+  deaths, particularly bad decisions, teachable moments, and a standout good play to keep when
+  there is one. Best first. Each is a `### N. mNN <clock> <map>: <a few words>` heading (the
+  `mNN` and the clock become the clip link on the page) and two to four sentences: what
+  happened, what it shows, and what to do next time or keep doing. A mundane death doesn't make
+  the list because nothing better turned up; four strong moments beat five padded ones.
+- `## Focus`: for each focus, the session's stoplight and a short paragraph that says what the
+  focus tests showed, in coach talk. Pick the two or three tests that show it best, good and
+  bad, with their clocks (`mNN 5:18`); don't list every test, the match reports' stoplights
+  already do. For example: "Both good and
+  bad: at m02 5:18 you broke line of sight, healed yourself and got the kill, but at m02 5:50
+  you died in the open with no cooldowns and cover a step to your left." A clean focus is "no
+  problems observed". When it wasn't tested, say so and what would have tested it.
+- `## Numbers`: one or two sentences from `trend.json`. Call out only metrics marked `better` or
+  `worse` ("normal variation" otherwise, "not enough history yet" under 5 baseline matches); hero
+  mix when it explains a change. The trend table itself is on the page.
+- `## Next`: the single habit that would have changed the most matches, as a trigger and an
+  action, and that the focus proposal is waiting when it is.
 
-Tone: peer to peer, direct, no excessive praise or hedging. If the data can't support a claim,
-say it's an inference.
+**Voice.** Talk to the player as "you", in the match report and the summary alike. Peer to peer, direct, no excessive praise or hedging. Plain words over numbers: no HP
+values, slot names, percentages or counts in the prose unless the number is the point. Name
+abilities by what they do for the player ("your escape", "Fade") rather than by HUD slot. If the
+data can't support a claim, say it's an inference.
+
+Cite moments by match folder prefix and clock (`m03 5:18`) or death id (`m03 d04`); the page
+turns each into a link that plays the clip from just before it. In a match report, the bare
+clock or id is enough.
 
 ## 5. Update the lessons file, then propose the next focus
 
 After coaching, update `lessons.md` in the profile dir:
 - Bump counts on recurring patterns, and add new ones with a dated example (game, death id).
 - Move a pattern to "Improving" after two or more clean sessions.
-- Under "Current focus", add this session's grades to each focus, one per game (e.g.
-  `2026-10-13 Busan: Not improved (d06)`), and the per-hero escape decisions the writers made.
+- Under "Current focus", add this session's stoplights to each focus, one per match (e.g.
+  `2026-10-13 Busan: red (0/1: d06)`), and the per-hero escape decisions the writers made.
   **Don't change the focus wording**, not to sharpen it, not to add a clause, not to merge two
   bullets. The wording is the player's; a change goes through the proposal below.
 - Leave "Focus options" as it is (it's written by `owcoach focus`). Put calls that must stay

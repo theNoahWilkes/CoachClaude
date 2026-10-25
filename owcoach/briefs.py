@@ -127,7 +127,8 @@ def pieces(game: Path) -> list[Piece]:
     ults = packet.get("ults", [])
     chunks = [sheets[i:i + SHEETS_PER_READER] for i in range(0, len(sheets), SHEETS_PER_READER)]
     if len(chunks) > 1 and len(chunks[-1]) < SHEETS_PER_READER // 3:     # a short tail joins the window before it
-        chunks[-2] += chunks.pop()
+        tail = chunks.pop()               # pop first: `chunks[-2] += chunks.pop()` reindexes after the pop
+        chunks[-1] += tail
     for i, chunk in enumerate(chunks):
         nn = f"{i + 1:02d}"
         lo, hi = _secs(chunk[0]["from"]), _secs(chunk[-1]["to"])
