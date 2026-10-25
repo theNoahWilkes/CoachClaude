@@ -9,7 +9,9 @@ Post-game coaching for **Overwatch 2** (from ShadowPlay recordings) and **Heroes
   report per game and per session, and keeps a lessons file with the habit you're working on.
 
 Everything the coaches write goes to one page per game you can open and browse:
-`coaching.html`, with every session, game, report, still and clip linked.
+`coaching.html`, with every session, game, report, still and clip linked. It opens in your
+browser when coaching finishes, and `setup` puts a **CoachClaude** link on your desktop that
+opens it any time (delete the link if you don't want it; it won't come back).
 
 ## Install
 
@@ -70,7 +72,7 @@ owcoach coach --new         # process + coach them (one claude process per game;
 owcoach coach "2026.10.16 - 22.23.04.03" --games "m01"   # re-coach one game
 owcoach focus               # the coach's focus proposal; `focus 2 4` picks
 owcoach run "<stem>"        # only the local stages, no coaching
-owcoach site --open         # <library>/coaching.html
+owcoach site --open         # <library>/coaching.html (default ~/Videos/owcoach)
 owcoach trend --role support
 ```
 
@@ -87,7 +89,7 @@ hotscoach analyze game.StormReplay [--json]       # one game
 hotscoach timeline game.StormReplay               # levels, XP by source, every death/objective/camp
 hotscoach positions game.StormReplay --start 4:00 --end 4:30
 hotscoach trend --last 20 [--hero Rehgar]
-hotscoach site --open                             # <data>/coaching.html
+hotscoach site --open                             # <data>/coaching.html (~/.local/share/coachclaude/hots)
 ```
 
 In Claude Code: *"coach tonight's games"*, *"why did we lose the last Dragon Shire?"*. Each

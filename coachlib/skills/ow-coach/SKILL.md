@@ -37,11 +37,13 @@ if something is missing from the packet that the pipeline could extract, say so 
   several minutes a game, then run `owcoach coach --new --yes` in the background. (With dev
   on, `owcoach coach` also prints a dollar estimate; pass it on. With dev off there is none,
   and you don't bring up cost yourself: the player isn't being billed per review.) It does every local stage, then one
-  `claude -p` process per piece of each game (section 3) and one for the summary (section 6);
-  several one-game recordings from one evening get one combined summary. When it's done, read the summary
-  `coaching.md` it names and the focus proposal, give the short version in chat, and name
-  `<library>/coaching.html` (rebuilt by the driver): every session, game, report, still and clip
-  in one page. Never coach a game in this process: the driver does every fan-out (section 3).
+  `claude -p` process per game in parallel and one summary (section 6); several one-game
+  recordings from one evening get one combined summary. When it's done, read the summary
+  `coaching.md` it names and the focus proposal, give the short version in chat, and say the
+  page is open in the browser (the driver rebuilds `<library>/coaching.html` and opens it):
+  every session, game, report, still and clip in one page. Later, the CoachClaude link on the
+  desktop opens it again. Don't coach a multi-game session in this process: the fan-out hits the subagent
+  limit (section 3).
 - "Show me the reports" / "open the coaching" → `owcoach site --open`.
 - A session name (`2026.10.16 - 22.23.04.03`) or folder → `owcoach coach "<session>" --yes`.
 - A single game folder or `packet.json` named explicitly → `owcoach coach "<session>" --games

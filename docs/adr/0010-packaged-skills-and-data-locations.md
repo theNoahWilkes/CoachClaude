@@ -20,3 +20,6 @@ read-only input.
   pipeline when a rule misses; with it off the skill records the miss under "Pipeline issues"
   instead. Today only the skill text enforces that; see
   [0005](0005-dev-mode-enforced-in-code.md).
+- The one file written outside those folders is `CoachClaude.html` on the desktop
+  (`coachlib/launcher.py`), a link to each game's page. `setup` creates it and a page rebuild
+  only rewrites it if it is still there, so deleting it is how a player opts out.

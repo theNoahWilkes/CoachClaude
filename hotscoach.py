@@ -120,7 +120,7 @@ def coachlib():
     next to this file, so `uv run hotscoach.py` works without pip."""
     if REPO_DIR not in sys.path:
         sys.path.insert(0, REPO_DIR)
-    import coachlib.config, coachlib.install, coachlib.site, coachlib.version  # noqa: F401
+    import coachlib.config, coachlib.install, coachlib.launcher, coachlib.site, coachlib.version  # noqa: F401
     return coachlib
 
 
@@ -796,6 +796,8 @@ def cmd_setup(a):
         with open(lessons, "w", encoding="utf-8") as f:
             f.write(text.replace("<player>", player))
     print(f"  [ok] lessons: {lessons}")
+    link = coachlib().launcher.write_link(create=True)
+    print(f"  [ok] desktop link: {link}" if link else f"  [--] no desktop folder found; the page is {DATA_DIR}/coaching.html")
     print("\nDone. Try: hotscoach batch --new-only   or, in Claude Code: coach my last game")
 
 
@@ -926,7 +928,7 @@ def _hots_tree():
         if os.path.exists(os.path.join(sdir, "coaching.md")):
             summary = open(os.path.join(sdir, "coaching.md"), encoding="utf-8").read()
         s = {"id": slug(date), "label": date, "date": date, "kind": "session", "games": [], "tables": [],
-             "title": f"Session {date}", "summary_md": summary, "nav_label": f"session {date}",
+             "title": f"Session {date}", "summary_md": summary,
              "sub": f'<a href="{rel(sdir)}" target="_blank">folder</a>'}
         for gname in sorted(d for d in os.listdir(sdir) if os.path.isdir(os.path.join(sdir, d))):
             gdir = os.path.join(sdir, gname)
@@ -938,7 +940,7 @@ def _hots_tree():
             coached = os.path.exists(os.path.join(gdir, "coaching.md"))
             played = gname[:16].replace(".", ":")
             gid = f"{s['id']}--{slug(gname)}"
-            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}",
+            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}", "nav": f"{m['map']} · {m['hero']}",
                  "result": res, "coached": coached, "processed": True,
                  "sub": f"{played} · {fmt(m['length'])} · replay {an.get('replay', '')} · " + f'<a href="{rel(gdir)}" target="_blank">folder</a>',
                  "cells": {"played": played, "map": {"text": m["map"], "href": f"#g/{gid}"},
@@ -986,7 +988,6 @@ def _hots_tree():
                                      "pre": open(tl, encoding="utf-8").read()})
             s["games"].append(g)
         n = len(s["games"])
-        s["nav"] = f"{date} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
         covering = [("Session log", e["text"]) for e in log
                     if any(e["start"] <= d <= e["end"] for d in {date} | {g["dir"][:10] for g in s["games"]})]
         if covering:
@@ -1034,15 +1035,17 @@ def _hots_tree():
 
 
 def build_site(out=None):
-    return coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+    page = coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+    if out is None:
+        coachlib().launcher.write_link()
+    return page
 
 
 def cmd_site(a):
     out = build_site(a.out)
     print(f"site: {out}")
     if a.open:
-        import webbrowser
-        webbrowser.open(out.as_uri())
+        coachlib().launcher.open_page(out)
 
 
 def cmd_install_skill(a):

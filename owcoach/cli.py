@@ -228,6 +228,9 @@ def cmd_setup(a):
     Path(ow["profile"]).mkdir(parents=True, exist_ok=True)
     for k in ("captures", "library", "profile"):
         print(f"  {k:10s} {ow.get(k)}")
+    from coachlib.launcher import write_link
+    link = write_link(create=True)
+    print(f"  desktop    {link or 'no desktop folder found; the page is <library>/coaching.html'}")
     if not ow.get("captures"):
         print("  no capture folder found: rerun with --captures <folder with the recordings>")
     if problems:
@@ -288,8 +291,8 @@ def cmd_site(a):
     out = build(Path(a.out) if a.out else None)
     print(f"site: {out}")
     if a.open:
-        import webbrowser
-        webbrowser.open(out.as_uri())
+        from coachlib.launcher import open_page
+        open_page(out)
 
 
 def cmd_coach(a):
@@ -342,6 +345,9 @@ def cmd_coach(a):
     print(f"done: {res['games']} games in {res['games_s']}s, total {res['total_s']}s")
     for s in res["summaries"]:
         print(f"  {s}")
+    if res.get("site") and a.open:
+        from coachlib.launcher import open_page
+        open_page(Path(res["site"]))
 
 
 def cmd_migrate(a):
@@ -490,6 +496,7 @@ def main(argv=None):
     s.add_argument("--jobs", type=int, default=2, help="decode jobs for --new processing")
     s.add_argument("--parallel", type=int, default=12, help="claude processes at once (one per piece)")
     s.add_argument("--yes", "-y", action="store_true", help="don't ask before spending")
+    s.add_argument("--no-open", dest="open", action="store_false", help="don't open the page in the browser when done")
     s.set_defaults(fn=cmd_coach)
 
     s = sub.add_parser("migrate", help="move the pre-2026-10-17 layout (<captures>/owcoach, ~/.cache/owcoach, ~/.owcoach) into the library")

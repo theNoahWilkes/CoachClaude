@@ -21,7 +21,9 @@ the ShadowPlay folder and are read-only input
 `owcoach new` / `run` / `coach` / `site` are the user-facing commands (README). `run`
 (`pipeline.run`) runs every local stage, skipping what is done. The coaching driver is
 `owcoach/coach.py`. `owcoach/site.py` collects every session and match for the shared renderer
-(`coachlib/site.py`), which writes `<library>/coaching.html`; `run` and `coach` rebuild it.
+(`coachlib/site.py`), which writes `<library>/coaching.html`; `run` and `coach` rebuild it, and
+`coach` opens it when done (`--no-open` skips that). Every rebuild also refreshes the desktop
+link (`coachlib/launcher.py`).
 
 ## Recording facts (measured from Noah's files)
 

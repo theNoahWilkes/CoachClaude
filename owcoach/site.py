@@ -2,8 +2,8 @@
 
 This module is the Overwatch collector: it knows the library layout (session.json, packet.json,
 coaching.md, frames/, moments.m3u, the profile's lessons and focus proposal, history.sqlite) and
-builds the plain tree that `coachlib.site.render` turns into the page. Days -> sessions (and
-combined summaries) -> games; a game page has the stats table, the scoreboard, a timeline, the
+builds the plain tree that `coachlib.site.render` turns into the page. The sidebar is days ->
+games; a day page holds the day's session and combined summaries; a game page has the stats table, the scoreboard, a timeline, the
 clip seekable from each moment, the report, and every death / ult / final blow with its stills,
 facts line and reader notes; Lessons and the Focus proposal are pages. Nothing is copied: every
 image and clip is a relative link from the library root.
@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
+from coachlib.launcher import write_link
 from coachlib.site import num, slug, write
 from coachlib.version import version
 
@@ -118,6 +119,7 @@ def _game(gdir: Path, session: dict) -> dict:
         g["links"].append({"label": "match.mp4", "href": g["video"], "blank": True})
     if not pk:
         g["title"] = " · ".join(str(x) for x in (mj.get("map") or gdir.name, (mj.get("result") or "").capitalize()) if x)
+        g["nav"] = " · ".join(str(x) for x in (mj.get("map") or gdir.name, mj.get("hero_final")) if x)
         g["sub"] = " · ".join(x for x in (mj.get("mode"), folder) if x)
         g["warnings"].append("No packet for this game (not processed, or no match found in the clip).")
         g["cells"] = {"played": session["date"], "map": {"text": mj.get("map") or gdir.name, "href": f"#g/{g['id']}"},
@@ -142,6 +144,7 @@ def _game(gdir: Path, session: dict) -> dict:
     result = game.get("result") or "none"
     g["result"] = result
     g["title"] = " · ".join(x for x in (game.get("map") or gdir.name, result.capitalize() if result != "none" else "", hero) if x)
+    g["nav"] = " · ".join(x for x in (game.get("map") or gdir.name, hero) if x)
     g["sub"] = " · ".join(x for x in (game.get("mode"), game.get("queue"), played.strftime("%Y-%m-%d %H:%M") if played else None,
                                       f"clock {stats.get('clock') or game.get('clock_at_end')}" if stats.get("clock") or game.get("clock_at_end") else None,
                                       f"{_mmss(game['duration_s'])} of video" if game.get("duration_s") else None, folder) if x)
@@ -239,6 +242,8 @@ def _session(sdir: Path) -> dict | None:
     label = m.group(4) if m else sdir.name
     if sj is not None and SESSION_RE.match(sdir.name):
         label = label.replace(".", ":", 1)[:5]           # HH:MM
+    elif sj is None:
+        label = re.sub(r"(\d{2})\.(\d{2})", r"\1:\2", label).replace(" to ", "–")   # '19.40 to 21.10' -> '19:40–21:10'
     kind = "session" if sj is not None else "combined"
     s: dict = {"id": slug(sdir.name), "name": sdir.name, "date": date, "label": label, "kind": kind, "summary_md": summary,
                "title": f"{'Summary' if kind == 'combined' else 'Session'} {date} {label}", "games": [], "tables": []}
@@ -248,12 +253,8 @@ def _session(sdir: Path) -> dict | None:
         for gdir in sorted(sdir.glob("m[0-9]*")):
             if gdir.is_dir() and (gdir.name in dirs or (gdir / "match.json").exists()):
                 s["games"].append(_game(gdir, s))
-        n = len(s["games"])
-        s["nav"] = f"{label} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
-        if not summary and n:
-            s["warn"] = "No session summary" + (" (a one-game session; the evening's combined summary covers it if there is one)." if n == 1 else ".")
-    else:
-        s["nav"] = f"Summary: {label}"
+        if not summary and s["games"]:
+            s["warn"] = "No session summary."
     if (t := _trend_table(_json(sdir / "trend.json"))):
         s["tables"].append(t)
     return s
@@ -309,4 +310,7 @@ def collect() -> dict:
 
 
 def build(out: Path | None = None) -> Path:
-    return write(collect(), out or library() / PAGE_NAME)
+    page = write(collect(), out or library() / PAGE_NAME)
+    if out is None:
+        write_link()
+    return page
