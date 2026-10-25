@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
+from coachlib.launcher import write_link
 from coachlib.site import num, slug, write
 from coachlib.version import version
 
@@ -309,4 +310,7 @@ def collect() -> dict:
 
 
 def build(out: Path | None = None) -> Path:
-    return write(collect(), out or library() / PAGE_NAME)
+    page = write(collect(), out or library() / PAGE_NAME)
+    if out is None:
+        write_link()
+    return page

@@ -120,7 +120,7 @@ def coachlib():
     next to this file, so `uv run hotscoach.py` works without pip."""
     if REPO_DIR not in sys.path:
         sys.path.insert(0, REPO_DIR)
-    import coachlib.config, coachlib.install, coachlib.site, coachlib.version  # noqa: F401
+    import coachlib.config, coachlib.install, coachlib.launcher, coachlib.site, coachlib.version  # noqa: F401
     return coachlib
 
 
@@ -796,6 +796,8 @@ def cmd_setup(a):
         with open(lessons, "w", encoding="utf-8") as f:
             f.write(text.replace("<player>", player))
     print(f"  [ok] lessons: {lessons}")
+    link = coachlib().launcher.write_link(create=True)
+    print(f"  [ok] desktop link: {link}" if link else f"  [--] no desktop folder found; the page is {DATA_DIR}/coaching.html")
     print("\nDone. Try: hotscoach batch --new-only   or, in Claude Code: coach my last game")
 
 
@@ -1034,15 +1036,17 @@ def _hots_tree():
 
 
 def build_site(out=None):
-    return coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+    page = coachlib().site.write(_hots_tree(), out or os.path.join(DATA_DIR, "coaching.html"))
+    if out is None:
+        coachlib().launcher.write_link()
+    return page
 
 
 def cmd_site(a):
     out = build_site(a.out)
     print(f"site: {out}")
     if a.open:
-        import webbrowser
-        webbrowser.open(out.as_uri())
+        coachlib().launcher.open_page(out)
 
 
 def cmd_install_skill(a):
