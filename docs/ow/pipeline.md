@@ -53,6 +53,7 @@ owcoach scan    SESSION.mp4 [--jobs 2] [--chunk 600] [--budget S] [--hwaccel aut
 owcoach segment CACHE
 owcoach split   CACHE [--cut here|script|none] [--pad 3]
 owcoach sheet   CACHE [--every N] [--labels]          # contact sheets for eyeballing
+owcoach digest  SESSION [--games "m01 m03"]         # focus tests, chains, facts as text (free)
 ```
 Cache: `<library>/.cache/<video stem>/` (`config.cache_for`; `scan.json`, `index.json`,
 `frames/<chunk>/*.jpg`, `features.npy`, `matches.json`, `states.json`, `events.json`, `hud.json`).
@@ -347,6 +348,26 @@ the labels it read Havana d02 forward at the Tracer, d05 / d10 strafing, Grímsv
 close-quarters chaos by flow, so it stays the HUD press record's job. Not done: the 2 fps
 lead-in (0.5 s apart; only the turn would be recoverable); a per-death static mask learned from
 the frames instead of the fixed weapon box.
+
+### Focus tests, death chains and the digest (`moments.py`, `owcoach digest`)
+
+Free, from `packet.json` alone, so it also runs on packets built before it existed (ADR 0012).
+- `focus_tests`: every window where a focus could be tested, in time order (`f01`, ...): each
+  `hud_game.low_episodes` entry (kind `low`); each stretch with the alive counter at enemies -
+  allies >= 2 while the player is alive (`down_two`: the counter holds until the next reading,
+  stretches 1.5 s apart merge, under 2 s dropped, death-to-respawn cut out); the 20 s after each
+  respawn with the counts at that moment (`respawn`). Each says which death it ended in, if any.
+- `chains`: runs of deaths each within 20 s of respawning from the one before (`short_life`).
+  On 2026-10-20 it found Hollywood d03 → d04, the pair the player read as one decision and its
+  consequence.
+- Which kinds test the current focus is matched from the focus's triggers (the text before the
+  first comma of each `;` part: "When you're under half HP and your escape is on cooldown",
+  "on respawn"), so an action like "back off to the last wall toward your spawn" doesn't pull in
+  low-HP and respawn windows. A focus whose wording names no kind gets every kind.
+- `owcoach digest SESSION` writes `<session>/digest.md`: per match, every death's facts block,
+  the chains, ults, fights, final blows and the focus tests per focus, every line prefixed with
+  the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
+  ~19k tokens.
 
 ## Stats and trends (`stats.py`, `history.py`, `owcoach trend`)
 

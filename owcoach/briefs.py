@@ -82,16 +82,22 @@ def fill(kind: str, fields: dict) -> str:
     return text
 
 
-def focus_wording(lessons: Path) -> str:
-    """The current focus as the readers see it: the bold wording(s) under '## Current focus'."""
+def focus_bullets(lessons: Path) -> list[str]:
+    """The current focus, one entry per bullet: the bold wording(s) under '## Current focus'."""
     if not lessons.exists():
-        return "none set"
-    section = current_focus(lessons.read_text(encoding="utf-8"))
-    bold = [b.strip() for b in re.findall(r"\*\*(.+?)\*\*", section, re.S)]
+        return []
+    section = re.sub(r"<!--.*?-->", "", current_focus(lessons.read_text(encoding="utf-8")), flags=re.S)
+    bold = [" ".join(b.split()) for b in re.findall(r"\*\*(.+?)\*\*", section, re.S)]
     if bold:
-        return " ".join(bold)
+        return bold
     first = next((ln for ln in section.splitlines()[1:] if ln.strip()), "")
-    return first.strip().lstrip("- ").strip() or "none set"
+    first = first.strip().lstrip("- ").strip()
+    return [first] if first else []
+
+
+def focus_wording(lessons: Path) -> str:
+    """The current focus as the readers see it, all bullets in one line."""
+    return " ".join(focus_bullets(lessons)) or "none set"
 
 
 def _secs(clock: str) -> float:

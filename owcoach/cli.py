@@ -15,6 +15,7 @@
   owcoach hud     CACHE                          HP and ability states at 2 fps
   owcoach split   CACHE [--out DIR]              cut matches out with ffmpeg -c copy
   owcoach packet  CACHE [--game N]               per-game coaching packet (stills + packet.json)
+  owcoach digest  SESSION                        every match's deaths, chains and focus tests as text
   owcoach trend   [--games N] [--role R] [--hero H]  per-10 stats: recent vs baseline
 
 CACHE may be the cache folder, the recording, or its bare stem (resolved through the library).
@@ -148,6 +149,30 @@ def cmd_notes(a):
     from .briefs import write_all_notes
     out = write_all_notes(Path(a.game))
     print(f"notes -> {out}")
+
+def cmd_digest(a):
+    """Write <session>/digest.md: every match's deaths, chains, ults, fights and focus tests as
+    text, for the triage (ADR 0012). Free: it reads the packets, nothing is sent to Claude."""
+    import sys
+    from .briefs import focus_bullets
+    from .coach import game_dirs
+    from .config import profile_dir, resolve_session
+    from .moments import KINDS, chains, focus_tests, kinds_for, session_digest
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    p = resolve_session(a.session)
+    if not p.is_dir():
+        raise SystemExit(f"digest: no session {a.session!r} in the library")
+    games = game_dirs(p, a.games.split() if a.games else None)
+    focuses = focus_bullets(profile_dir() / "lessons.md")
+    out = session_digest(p, games, focuses)
+    kinds = sorted({k for f in focuses for k in kinds_for(f)}) or list(KINDS)
+    for g in games:
+        pk = json.loads((g / "packet" / "packet.json").read_text(encoding="utf-8"))
+        tests = [x for x in pk.get("focus_tests") or focus_tests(pk) if x["kind"] in kinds]
+        ch = pk["chains"] if "chains" in pk else chains(pk)
+        print(f"  {g.name:42s} deaths {len(pk.get('deaths') or []):2d}  chains {len(ch)}  focus tests {len(tests):2d}")
+    print(f"digest -> {out} ({len(out.read_text(encoding='utf-8')) // 4:,} tokens, roughly)")
+
 
 def cmd_trend(a):
     from .history import format_trend, trend
@@ -438,6 +463,11 @@ def main(argv=None):
     s = sub.add_parser("notes", help="concatenate a game's reader notes into packet/notes/all.md for the writer")
     s.add_argument("game", help="the game folder (the one with packet/)")
     s.set_defaults(fn=cmd_notes)
+
+    s = sub.add_parser("digest", help="write <session>/digest.md: every match's deaths, chains and focus tests as text (free)")
+    s.add_argument("session", help="session folder or name")
+    s.add_argument("--games", help='only these games, e.g. "m01 m04"')
+    s.set_defaults(fn=cmd_digest, needs_tools=False)
 
     s = sub.add_parser("focus", help="show the coach's focus proposal, or pick the next focus: owcoach focus 2 [4]")
     s.add_argument("n", nargs="*", help="option number(s) from <profile>/focus_proposal.md, e.g. 2 4 or 2,4")

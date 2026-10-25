@@ -13,7 +13,8 @@ collect_hots) decides the content and hands over this shape:
            warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
            links [{label, href}], report_md (+ report_title), notes_md (+ notes_title: a second text
            block, e.g. what the lessons file says about this game), moments [moment], details [detail]
-  table:   title?, header [str], rows [[cell]], align_first? (bool: first column is a row header)
+  table:   title?, header [str], rows [[cell]], align_first? (bool: first column is a row header),
+           note (html, a line under the table) | None
   timeline: duration, deaths [{id, t, to?, label}], spans [{from, to, lane: main|top|bottom, cls, label}],
            marks [{t, lane: top|bottom, cls, label, id?}], ticks (seconds between tick labels)
   moment:  id, kind (css class), title, extra (small text), flags [str], video_t | None, clock,
@@ -87,6 +88,8 @@ def table_html(t: dict) -> str:
         first = f"<th>{e(cells[0])}</th>" if t.get("align_first", True) and cells and not isinstance(cells[0], dict) else _cell(cells[0]) if cells else ""
         out.append("<tr>" + first + "".join(_cell(c) for c in cells[1:]) + "</tr>")
     out.append("</table>")
+    if t.get("note"):
+        out.append(f'<p class="tnote">{t["note"]}</p>')
     return "".join(out)
 
 
@@ -284,7 +287,8 @@ table.stats th{text-align:left;color:var(--dim);font-weight:500}table.stats tr:f
 table.games{width:100%}
 .res-victory,.res-win{color:var(--green)}.res-defeat,.res-loss{color:var(--red)}
 .v-better{color:var(--green)}.v-worse{color:var(--red)}.v-normal-variation{color:var(--dim)}
-.two{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}.imgs{flex:1 1 520px;min-width:0}.imgs img{width:100%;max-height:360px;object-fit:contain;object-position:left top;border:1px solid var(--line);display:block;margin-bottom:6px}
+.two{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:24px;align-items:start}.imgs{min-width:0}
+.tnote{color:var(--dim);font-size:13px;margin:4px 0;max-width:46em}.imgs img{width:100%;max-height:360px;object-fit:contain;object-position:left top;border:1px solid var(--line);display:block;margin-bottom:6px}
 .two h2{margin-top:8px}
 .tl{width:100%;height:56px;display:block;margin-top:12px}.tl-bar{fill:#262a32}.tl-fight{fill:#3a4150}.tl-dead{fill:#5a2626}.tl-span{fill:#3a4150}
 .tl-death{fill:var(--red);cursor:pointer}.tl-ult{fill:#7a5a1a}.tl-ult-use{fill:var(--acc);cursor:pointer}.tl-fb{fill:var(--green);cursor:pointer}.tl-mark{fill:var(--blue);cursor:pointer}
@@ -306,7 +310,7 @@ button.seek{background:#2a3140;color:var(--ink);border:1px solid var(--line);bor
 .strip a{position:relative;flex:0 0 auto}.strip img{height:120px;display:block;border:1px solid var(--line)}
 .strip span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);font-size:11px;padding:0 4px;border-radius:2px}
 details{margin:6px 0}summary{cursor:pointer;color:var(--dim)}pre.facts{white-space:pre-wrap;font-size:12.5px;background:#101214;padding:8px;line-height:1.4}
-@media(max-width:900px){body{grid-template-columns:1fr}nav{position:static;height:auto;max-height:40vh}main{padding:12px 16px}}
+@media(max-width:900px){.two{grid-template-columns:1fr}body{grid-template-columns:1fr}nav{position:static;height:auto;max-height:40vh}main{padding:12px 16px}}
 """
 
 JS = """
