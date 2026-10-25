@@ -334,6 +334,12 @@ class Game:
         died = [d["t"] for d in self.deaths if d["victim"] == pid and d["t"] <= t]
         return bool(died) and not any(p == pid and died[-1] < rt <= t for rt, p in self.revives)
 
+    def label(self, p):
+        """Hero name, plus the side when both teams have that hero (ARAM mirrors)."""
+        if sum(q["hero"] == p["hero"] for q in self.players) < 2:
+            return p["hero"]
+        return f"{p['hero']} ({'ally' if p['team'] == self.me['team'] else 'enemy'})"
+
     def last_pos(self, pid, t):
         best = None
         for pt, p, x, y in self.positions:
@@ -409,7 +415,7 @@ def analyze(g):
             flags.append(f"died {nxt[0][0] - d['t']:.0f}s before objective ({nxt[0][1]})")
         if any(abs(t - d["t"]) <= 2 for t in g.drops):
             flags.append("dropped a carried objective item")
-        killers = ", ".join(g.pid[k]["hero"] for k in d["killers"]) or "NPC/structure"
+        killers = ", ".join(g.label(g.pid[k]) for k in d["killers"]) or "NPC/structure"
         death_reports.append(dict(t=fmt(d["t"]), killers=killers, flags=flags))
 
     # fights your team lost while you were alive and elsewhere
@@ -440,7 +446,7 @@ def analyze(g):
     kc = defaultdict(int)
     for d in g.deaths:
         if d["victim"] == my_pid:
-            for k in d["killers"]: kc[g.pid[k]["hero"]] += 1
+            for k in d["killers"]: kc[g.label(g.pid[k])] += 1
     my_deaths = len(death_reports)
     nemesis = [h for h, c in kc.items() if my_deaths >= 3 and c >= max(3, my_deaths - 1)]
 
@@ -530,7 +536,7 @@ def print_report(m, deaths, notes):
 
 def analysis_dict(g, m, deaths, notes):
     return dict(version=version(), metrics=m, deaths=deaths, notes=notes,
-                teams={p["hero"]: ("ally" if p["team"] == g.me["team"] else "enemy") for p in g.players},
+                teams={g.label(p): ("ally" if p["team"] == g.me["team"] else "enemy") for p in g.players},
                 objectives=[(fmt(t), n) for t, n in g.objectives],
                 camps=[(fmt(t), camp, "us" if team == g.me["team"] else "them") for t, camp, team in g.camps],
                 structures=[(fmt(t), kind, "us" if team == g.me["team"] else "them") for t, kind, team in g.structures],
@@ -656,7 +662,7 @@ def cmd_timeline(a):
 
 def print_timeline(g):
     mt = g.me["team"]
-    who = lambda p: ("YOU " if p is g.me else "") + p["hero"]
+    who = lambda p: "YOU " + p["hero"] if p is g.me else g.label(p)
     print(f"== {g.map} ({fmt(g.length)}) - {'WIN' if g.me['win'] else 'LOSS'} ==")
     for label, team in (("allies", mt), ("enemies", 1 - mt)):
         hs = [who(p) + (" [front]" if norm(p["hero"]) in TANKS | BRUISERS else "")
@@ -679,7 +685,7 @@ def print_timeline(g):
     for d in g.deaths:
         v = g.pid[d["victim"]]
         tag = "ALLY DIED " if v["team"] == mt else "ENEMY DIED"
-        killers = ", ".join(g.pid[k]["hero"] for k in d["killers"]) or "NPC"
+        killers = ", ".join(g.label(g.pid[k]) for k in d["killers"]) or "NPC"
         events.append((d["t"], f"{tag} {who(v):14} <- {killers}  ({d['x']:.0f},{d['y']:.0f} {side_label(g, d['x'])})"))
     for t, n in g.objectives:
         events.append((t, f"OBJECTIVE  {n}"))
