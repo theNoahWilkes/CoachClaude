@@ -18,14 +18,16 @@ match's cost on its own, re-reading 100k+ of context 20 times to paste facts blo
 
 | Piece | One process per | Notes file | Images |
 |---|---|---|---|
-| Deaths | two consecutive deaths in `deaths[]` (one if the count is odd) | `notes/dNN.md`, one per death | each death's first-pass `frames`, plus up to 12 extras per death on demand |
-| Overview | 5 min of game clock: 30 first-pass sheets (2 cells, 5 s apart) | `notes/overview_NN.md` (NN = chunk number, from 01) | those sheets, plus up to 15 extra (`b`) sheets on demand |
-| Ults | the whole game (skip if `ults` is empty) | `notes/ults.md` | every ult's `frames` |
+| Triage | session, before any reader (ADR 0012) | `<session>/triage.md` (from `<session>/digest.md`) | none |
+| Deaths | two consecutive shortlisted deaths (every death in the full read) | `notes/dNN.md`, one per death | each death's first-pass `frames`, plus up to 12 extras per death on demand |
+| Focus tests | 30 first-pass sheets covering the focus tests and the clock-only moments | `notes/tests_NN.md` | those sheets, plus up to 10 extra (`b`) sheets on demand |
+| Overview (full read only) | 5 min of game clock: 30 first-pass sheets (2 cells, 5 s apart) | `notes/overview_NN.md` (NN = chunk number, from 01) | those sheets, plus up to 15 extra (`b`) sheets on demand |
+| Ults | the shortlisted ults (every ult in the full read; skip if none) | `notes/ults.md` | those ults' `frames` |
 | Writer | game, once all its readers are done | `packet/coaching.md` and `notes/summary.md` | none, or up to 6 stills to settle a conflict |
 
 ## Briefs
 
-The brief templates live in `../briefs/`: `deaths.md`, `overview.md`, `ults.md`, `writer.md`.
+The brief templates live in `../briefs/`: `triage.md`, `deaths.md`, `tests.md`, `overview.md`, `ults.md`, `writer.md`.
 Their `{{FIELD}}` markers are filled by `owcoach/briefs.py`: the packet folder, the player,
 the current focus (the bold wording under "## Current focus" in the lessons file), the skill
 folder, each death's `facts` block pasted verbatim under `### dNN at CLOCK on HERO`, the hero
@@ -46,7 +48,7 @@ shorten the notes shapes; they are what the writer relies on.
   Sonnet 5.5 tied Opus on quality but used the same share of the plan window (issue #20).
 - A match's writer launches as soon as its readers are done and `notes/all.md` is written.
 - **Resume:** a reader piece is done when each of its notes files ends with its last section
-  (`## Read`, `## Rejoins` or `## Ults read`); the writer is done when `coaching.md` and
+  (`## Shortlist`, `## Read`, `## Tests read`, `## Rejoins` or `## Ults read`); the writer is done when `coaching.md` and
   `notes/summary.md` are newer than every notes file. Done pieces are not relaunched, so a run
   cut off by a usage limit picks up where it stopped. A piece that exits without finishing is
   relaunched once.

@@ -276,7 +276,7 @@ def _game(gdir: Path, session: dict) -> dict:
         cells = "".join(f'<a href="{purl}/{quote(o["file"])}" target="_blank"><img src="{purl}/{quote(o["file"])}" loading="lazy" alt="{o["from"]}"><span>{o["from"]}</span></a>'
                         for o in pk["overview"])
         g["details"].append({"summary": f"Overview stills ({len(pk['overview'])} cells, 10 s apart)", "html": f'<div class="strip wrap">{cells}</div>'})
-    for n in ("summary", "ults") + tuple(f"overview_{i:02d}" for i in range(1, 10)):
+    for n in ("summary", "ults") + tuple(f"{k}_{i:02d}" for k in ("tests", "overview") for i in range(1, 10)):
         if (t := _read(pk_dir / "notes" / f"{n}.md")):
             g["details"].append({"summary": f"Reader notes: {n}", "md": t})
     if pk.get("notes"):

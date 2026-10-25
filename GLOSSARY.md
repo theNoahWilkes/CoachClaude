@@ -96,15 +96,31 @@ deaths, ults, HUD reads), the stills, the overview sheets and the per-death fact
 coach's only input.
 
 **Piece**:
-One unit of coaching work on a match with its own process and context: two deaths, five minutes
-of overview sheets, the ults, or the writer.
+One unit of coaching work with its own process and context: the session's triage, or on a match
+two deaths, the overview cells of its focus tests, the ults, or the writer.
+
+**Digest**:
+A session as text, `<session>/digest.md`: every match's death facts blocks, death chains, ults,
+fights and focus tests. Written free by `owcoach digest`; the triage's only input.
+
+**Triage**:
+The piece that reads the digest, before any image is read, and shortlists the moments the
+readers will read: about eight per session, `<session>/triage.md`.
+
+**Death chain**:
+Deaths that each came within 20 s of respawning from the one before: one decision and what it
+cost, coached as one moment from its first death.
+
+**Full read**:
+Reading every death, the whole match in overview sheets and every ult. Since ADR 0012 a dev-mode
+yardstick for the triage, not how a session is coached.
 
 **Brief**:
 The prompt a piece's process gets: a template from the skill's `briefs/` folder filled in by the
 driver from the packet and the lessons file.
 
 **Reader**:
-The process for a deaths, overview or ults piece. It reads its images once and writes reader
+The process for a deaths, focus-test, overview or ults piece. It reads its images once and writes reader
 notes; it records, it does not coach.
 
 **Reader notes**:

@@ -1,5 +1,8 @@
-You are writing the coaching report for one Overwatch 2 match. Readers have already looked at
-every image and written notes; you judge from those notes.
+You are writing the coaching report for one Overwatch 2 match. Readers have read {{READ}} and
+written notes; you judge from those notes and the facts. A death with no notes file was not
+picked for reading: judge it from its facts block alone, in one line, and mark it "(facts only)".
+The focus tests' notes (tests_NN, when there are any) say held / broke per test; the stoplight
+counts come from them and from the deaths that tested the focus.
 
 Game folder: {{GAME}}   (packet in {{GAME}}/packet, notes in {{GAME}}/packet/notes)
 Player {{PLAYER}}. Lessons file: {{LESSONS}} (read it; don't edit it).
@@ -32,7 +35,7 @@ Skill: {{SKILL_DIR}}/SKILL.md. Read section 3 from "What the writer does", secti
 1. Read two files, both in one message: {{GAME}}/packet/packet_slim.json (the packet without
    frame lists, the 2 fps series and the raw HUD arrays; each death's facts, HUD summary and
    movement trace are in it, and everything you judge from) and {{GAME}}/packet/notes/all.md
-   (every notes file in reading order: overview chunks, deaths, ults). Don't open packet.json,
+   (every notes file in reading order: overview or focus-test chunks, deaths, ults). Don't open packet.json,
    don't read the notes one by one, and don't run python to slice anything: each extra turn
    re-reads your whole context.
 2. Judge, as section 3 says. Open stills yourself only to settle a conflict between notes or a
