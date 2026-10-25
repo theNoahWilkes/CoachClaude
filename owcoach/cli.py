@@ -326,6 +326,8 @@ def cmd_coach(a):
     from .config import dev, new_recordings, resolve_session
     from .pipeline import NoProfile, run
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if a.full_read and not dev():
+        raise SystemExit("coach: --full-read is the dev-mode yardstick (ADR 0012); turn dev mode on with `owcoach config dev on`")
     sessions = []
     if a.new or not a.session:
         new = new_recordings()
@@ -366,7 +368,7 @@ def cmd_coach(a):
             raise SystemExit("not started (pass --yes to skip the question)")
     combined = a.sessions_summary or (len(sessions) > 1 and not a.session)   # several new one-game sessions -> one summary
     res = coach(sessions, games, model=a.model, effort=a.effort, writer_effort=a.writer_effort, reader_model=a.reader_model,
-                summary=a.summary, combined=combined, role=a.role, parallel=a.parallel)
+                summary=a.summary, combined=combined, role=a.role, parallel=a.parallel, full_read=a.full_read)
     print(f"done: {res['games']} games in {res['games_s']}s, total {res['total_s']}s")
     for s in res["summaries"]:
         print(f"  {s}")
@@ -525,6 +527,7 @@ def main(argv=None):
     s.add_argument("--role", help="trend filter (e.g. support)")
     s.add_argument("--jobs", type=int, default=2, help="decode jobs for --new processing")
     s.add_argument("--parallel", type=int, default=12, help="claude processes at once (one per piece)")
+    s.add_argument("--full-read", action="store_true", help="dev mode: no triage, read every death, the whole match and every ult (the yardstick)")
     s.add_argument("--yes", "-y", action="store_true", help="don't ask before spending")
     s.add_argument("--no-open", dest="open", action="store_false", help="don't open the page in the browser when done")
     s.set_defaults(fn=cmd_coach)

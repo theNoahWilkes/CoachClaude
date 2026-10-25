@@ -70,21 +70,27 @@ current focus and say the proposal is still waiting.
 No Claude context reads a game's images or writes its report by itself. `owcoach coach` (the
 driver, `owcoach/coach.py`) cuts each game into **pieces** and runs one `claude -p` process per
 piece, each from a **brief** the driver fills in from `packet.json` and the lessons file. The
-briefs are templates next to this file, in `briefs/` (`deaths.md`, `overview.md`, `ults.md`,
-`writer.md`); the piece table and the measured reasons are in `references/subagents.md`. To
-change how a piece reads or writes, edit its template or the rubric; nobody prompts a reader by
-hand (ADR 0011).
+briefs are templates next to this file, in `briefs/` (`triage.md`, `deaths.md`, `tests.md`,
+`ults.md`, `writer.md`, and `overview.md` for the full read); the piece table and the measured
+reasons are in `references/subagents.md`. To change how a piece reads or writes, edit its
+template or the rubric; nobody prompts a reader by hand (ADR 0011).
 
-- **Readers:** one per two deaths, one per 5 min of overview sheets (30 first-pass sheets, cells
-  5 s apart, plus up to 15 extra sheets), one for the ults. Each reads its images once, in a
-  fresh context, and writes `packet/notes/<piece>.md`. A death reader gets each death's `facts`
+- **The triage** comes first, one per session (ADR 0012). The driver writes `<session>/digest.md`
+  (`owcoach digest`: every match's death facts blocks, death chains, ults, fights and focus
+  tests, as text), and one process reads it and writes `<session>/triage.md`, a shortlist of
+  about eight moments. Readers read the shortlisted moments and the focus tests only; a death
+  that isn't shortlisted is judged from its facts block.
+- **Readers:** one per two shortlisted deaths, one per 30 first-pass overview sheets covering the
+  focus tests and the shortlisted moments that have only a clock (`tests_NN`, a verdict per
+  test: held, broke or unclear, and what the cells show), one for the shortlisted ults. Each
+  reads its images once, in a fresh context, and writes `packet/notes/<piece>.md`. A death reader gets each death's `facts`
   block verbatim (the HUD from 10 s before with every slot by name, every press with its
   context, the low-HP episode, the feed and the alive counts, all read locally; also on disk as
   `packet/facts/dNN.md`), then the first-pass stills at native resolution; the detail and kill
   cam every 0.1 s are marked `extra` and opened only for a specific question, up to 12 per
   death. Readers don't rebuild HP or cooldowns from the images; their looks go on cover, who is
-  in view, threats and the kill cam. An overview reader gets its window's `hud_game.fights`,
-  `low_episodes` and `presses`, so it knows where to look. Readers and the writer get the path
+  in view, threats and the kill cam. A focus-test reader gets its tests with the low-HP
+  episodes' slot states, so it knows where to look. Readers and the writer get the path
   of each hero's reference note from `hero_notes` when there is one; a hero without is fine
   (you know the kits), and nobody fetches one mid-run. If a hero newer than your training data
   has no note and it limited the coaching, the report says so and suggests `owcoach hero <Name>`.
@@ -100,9 +106,13 @@ hand (ADR 0011).
 - A piece whose notes are complete is skipped, and a game whose report and summary are newer
   than its notes is skipped whole, so a run that was cut off resumes where it stopped.
 
+- **The full read** (`owcoach coach --full-read`, dev mode only) skips the triage and reads every
+  death, the whole match in 5-minute overview pieces (`overview.md`) and every ult, as before ADR
+  0012. It is the yardstick a triage run is measured against, a paid run done on purpose.
+
 What the writer does, in its own context:
-- Read every notes file of its match: the overview chunks in order, then the deaths, then the
-  ults. Check that each death's notes agree with the overview cells before it. It may open a few
+- Read every notes file of its match: the focus-test (or overview) chunks in order, then the
+  deaths, then the ults. Check that each death's notes agree with the cells before it. It may open a few
   stills itself, at most 6 per match, in two cases: two notes conflict, or a claim backs a moment
   it nominates. It says so in the report when it does.
 - Judge each death and ult against `references/rubric.md`. The categories and verdicts in the
@@ -186,11 +196,12 @@ Headless: say the proposal is waiting, in chat and at the end of `<session>/coac
 
 ## 6. Processes
 
-`owcoach coach "<session>"` is the only way a game gets coached. The driver runs the readers
-through a pool (`--parallel`, default 12; overview pieces first, they take longest), each game's
+`owcoach coach "<session>"` is the only way a game gets coached. The driver runs each session's
+triage, then the readers through a pool (`--parallel`, default 12; focus-test and overview
+pieces first, they take longest), each game's
 writer as soon as its readers are done, and then one process for the session summary, the
 lessons file and the focus proposal. That summary process uses this skill: it reads each game's
-`notes/summary.md` and `trend.json`, does section 4 (session summary) and section 5, and leaves
+`notes/summary.md`, the triage's `triage.md` and `trend.json`, does section 4 (session summary) and section 5, and leaves
 the focus proposal for the player to pick with `owcoach focus` (nobody is at the keyboard). With
 several sessions (`--sessions-summary`, or every new one-game recording of an evening) the
 summary covers them all and goes to `<library>/<date> - <HH.MM> to <HH.MM>/coaching.md`. Logs go

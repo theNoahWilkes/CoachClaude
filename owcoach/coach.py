@@ -1,8 +1,12 @@
-"""`owcoach coach`: the headless coaching driver (ADR 0011).
+"""`owcoach coach`: the headless coaching driver (ADR 0011, ADR 0012).
 
-One `claude -p` process per piece: the driver cuts each match into pieces (`briefs.py`: two
-deaths, 5 min of overview, the ults, the writer), fills a brief per piece from the packet and
-the lessons file, and runs the readers through a pool, longest pieces first. A match's writer
+One `claude -p` process per piece. Each session starts with a triage process that reads the
+session's digest (text only, `moments.py`) and shortlists about eight moments. The driver then
+cuts each match into pieces (`briefs.py`: two shortlisted deaths, the overview cells of the
+focus tests, the shortlisted ults, the writer), fills a brief per piece from the packet and the
+lessons file, and runs the readers through a pool, longest pieces first. `full_read` (dev mode
+only) skips the triage and reads everything, as before ADR 0012: the yardstick a triage run is
+measured against. A match's writer
 starts as soon as its readers are done and `notes/all.md` is written. Then one process does
 the session summary, the lessons file and the focus proposal (ADR 0006). No Claude context
 orchestrates a match: the per-match main process was a quarter of every match's cost, re-reading
@@ -24,7 +28,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .briefs import Piece, pieces, write_all_notes
+from .briefs import Piece, pieces, shortlist, triage_piece, write_all_notes
 from .config import library, profile_dir, repo_dir, skill_dir, tesseract_dir
 
 READER_TOOLS = ["Read", "Glob", "Grep", "Write"]
@@ -33,7 +37,7 @@ SUMMARY_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Skill", "Bash(python:
 DEFAULT_MODEL = "claude-opus-5-5"
 DEFAULT_PARALLEL = 12       # processes at once; overview pieces first because they take longest
 DEFAULT_COST = 6.0          # $/game when no history is on disk (7 games, 2026-10-16: $4.4-8.0)
-ORDER = {"overview": 0, "deaths": 1, "ults": 2, "writer": -1}
+ORDER = {"overview": 0, "tests": 0, "deaths": 1, "ults": 2, "writer": -1}
 
 
 def claude_exe() -> str:
@@ -148,7 +152,9 @@ def _finish(p: subprocess.Popen) -> float:
 def summary_prompt(sessions: list[Path], out: Path) -> str:
     where = (f"session {sessions[0]}" if len(sessions) == 1
              else "these sessions, played the same evening and summarised together: " + ", ".join(str(s) for s in sessions))
-    return f"""Use the ow-coach skill. Every match of {where} has already been coached by a separate process: each match folder has packet/coaching.md and packet/notes/summary.md (its focus tests and moment nominations, ending with a '## Lessons' section of what that match's writer would change in the lessons file). Do the session part only:
+    triage = [s / "triage.md" for s in sessions if (s / "triage.md").exists()]
+    triage_line = (f" The triage's shortlist, which chose what the readers read, is in {', '.join(str(t) for t in triage)}; read it too." if triage else "")
+    return f"""Use the ow-coach skill.{triage_line} Every match of {where} has already been coached by a separate process: each match folder has packet/coaching.md and packet/notes/summary.md (its focus tests and moment nominations, ending with a '## Lessons' section of what that match's writer would change in the lessons file). Do the session part only:
 1. Read each match's packet/notes/summary.md and {out}/trend.json. Don't re-read the match reports, notes or stills, and don't launch readers or writers.
 2. Write the session summary to {out}/coaching.md (skill section 4, 'The session summary'): about five moments picked from the matches' nominations, the focus in plain words from their focus tests. Cite every moment and test by its match folder's prefix and clock (m03 5:18) or death id (m03 d04).
 3. Update the lessons file (skill section 5) from the matches' '## Lessons' sections: if this session already has entries in it, replace them rather than adding to them, so nothing is counted twice. Add grades under the current focus; do NOT change its wording.
@@ -175,9 +181,9 @@ def write_trend(out: Path, n_games: int | None, role: str | None) -> None:
 class _Match:
     """One match's pieces and where they stand."""
 
-    def __init__(self, game: Path, log=print):
+    def __init__(self, game: Path, log=print, picks: dict | None = None):
         self.game = game
-        all_pieces = pieces(game)
+        all_pieces = pieces(game, picks)
         self.writer = next(p for p in all_pieces if p.kind == "writer")
         self.readers = [p for p in all_pieces if p.kind != "writer"]
         self.pending = {p.name for p in self.readers if not p.done()}
@@ -237,24 +243,51 @@ def run_pieces(matches: list[_Match], model: str, reader_model: str | None, effo
         running = still
 
 
+def match_written(game: Path) -> bool:
+    """A match's report and summary are newer than every notes file."""
+    return Piece("writer", "writer", game, "", []).done()
+
+
+def run_triage(sessions: dict[Path, list[Path]], model: str, effort: str, log=print) -> dict[Path, dict]:
+    """One triage process per session, all at once; -> each session's shortlist per match."""
+    running = []
+    for s, gs in sessions.items():
+        p = triage_piece(s, gs)
+        if p.done():
+            log(f"  {s.name}: triage already done")
+            continue
+        running.append((s, p, _launch("triage", p.prompt, [s], s / ".coach", model, READER_TOOLS, effort, cwd=s)))
+        log(f"  launched {s.name} / triage")
+    for s, p, proc in running:
+        proc.wait()
+        log(f"  done {s.name} / triage ({_finish(proc):.0f}s)" if p.done() else
+            f"  {s.name} / triage did not finish: no deaths will be read, only the focus tests")
+    return {s: shortlist(s) for s in sessions}
+
+
 def coach(sessions: list[Path], games: list[str] | None = None, model: str = DEFAULT_MODEL, effort: str = "low",
           writer_effort: str = "low", reader_model: str | None = None, summary: bool = True,
-          combined: bool = False, role: str | None = None, parallel: int = DEFAULT_PARALLEL, log=print) -> dict:
+          combined: bool = False, role: str | None = None, parallel: int = DEFAULT_PARALLEL,
+          full_read: bool = False, log=print) -> dict:
     """Coach every match of each session (pieces pooled across all of them), then the summary:
-    one per session, or one over all of them when `combined`."""
+    one per session, or one over all of them when `combined`. Each session's triage runs first
+    and picks what the readers read; `full_read` (dev mode) reads everything instead."""
     per = {s: game_dirs(s, games) for s in sessions}
     t0 = time.time()
-    matches: list[_Match] = []
+    todo: dict[Path, list[Path]] = {}
     for s, gs in per.items():
         (s / ".coach").mkdir(exist_ok=True)
         if not combined:
             write_trend(s, None, role)
         for g in gs:
-            m = _Match(g, log)
-            if m.written:
+            if match_written(g):
                 log(f"  {g.name}: already written, skipping")
-                continue
-            matches.append(m)
+            else:
+                todo.setdefault(s, []).append(g)
+    # the triage sees every match of the session, written or not, so its picks are session-wide
+    picks = {} if full_read else run_triage({s: per[s] for s in todo}, model, effort, log)
+    matches = [_Match(g, log, None if full_read else picks[s].get(g.name[:3], {"ids": set(), "clocks": []}))
+               for s, gs in todo.items() for g in gs]
     if combined:
         out = combined_dir(sessions)
         out.mkdir(parents=True, exist_ok=True)
