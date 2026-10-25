@@ -110,6 +110,7 @@ NOTES = [
     "Ult state is ready / not ready only (no charge %); 'used' means the ready icon went away while alive.",
     "Death flags: first_down = 5v5 just before (no teammate down yet), team_ahead / team_behind / even_fight compare the counts; short_life = died within 20 s of respawning; repeat_killer = 3+ deaths to that player. Flags are leads, not verdicts.",
     "focus_tests (owcoach/moments.py): every window where a focus could be tested, in time order: kind low = a low-HP episode, down_two = the team down two or more while the player is alive (from the alive counter), respawn = the 20 s after a respawn; each with from / to, what, and the death it ended in if any. Which kinds test the current focus is matched from its wording when the digest is written. chains = runs of deaths where each came within 20 s of respawning from the one before (one decision and its consequence).",
+    "saves (owcoach/saves.py): every 'SAVED <ally>' notice under the crosshair, read locally from the screen: t / clock = when it appeared, by = true for 'SAVED BY <ally>' (a teammate saved the player). Who was saved is not read. Two saves within ~3 s count once. Routine for a support: a save is a moment only when it turned a fight.",
     "Objective numbers: control capture %, push / competitive escort distance in metres; quick-play escort progress isn't read.",
 ]
 
@@ -255,7 +256,8 @@ def _killcam_times(t: np.ndarray, killcam: np.ndarray, down: float, dead: float)
 
 def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own: np.ndarray,
                  killcam: np.ndarray, player: str | None, jobs: int = 4, died: dict | None = None,
-                 index: list | None = None, hud_all: dict | None = None, refresh: bool = False) -> dict:
+                 index: list | None = None, hud_all: dict | None = None, refresh: bool = False,
+                 saved: list[dict] | None = None) -> dict:
     """refresh: keep the stills and overview sheets already on disk and rewrite packet.json only
     (for changes to the json, the HUD reads or the notes; a full build regrabs every still)."""
     meta = json.loads((gdir / "match.json").read_text())
@@ -463,7 +465,7 @@ def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own:
         "images": {n.split(".")[0]: n for n in ("scoreboard_final.jpg", "summary.jpg", "rank.jpg")
                    if (pdir / n).exists()},
         "heroes": heroes,
-        "counts": {"deaths": len(deaths), "final_blows": len(fbs), "ults": len(ult_recs),
+        "counts": {"deaths": len(deaths), "final_blows": len(fbs), "ults": len(ult_recs), "saves": len(saved or []),
                    "ults_used": sum(u["outcome"] == "used" for u in ult_recs),
                    "deaths_per_10min": round(len(deaths) / max(1.0, (m["end"] - m["start"]) / 600), 1),
                    "time_dead_s": round(sum(d["respawned"]["t"] - d["t"] for d in deaths if d["respawned"]), 1),
@@ -479,6 +481,7 @@ def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own:
                        for h in heroes if h.get("hero") and hero_note_path(h["hero"])},   # relative to the profile dir
         "ults": ult_recs,
         "final_blows": fbs,
+        "saves": [{**G.at(x["t"]), "by": x["by"]} for x in saved or []],
         "alive_series": [[G.at(a["t"])["t"], a["ally"], a["enemy"]] for a in ev.get("alive", [])],
         "notes": NOTES,
     }
@@ -543,6 +546,8 @@ def packets(cache: Path, out_root: Path | None = None, only: int | None = None, 
         player = None
     from .hudscan import hudscan
     hud_all = hudscan(cache, quiet=True)       # cached in hud.json after the first run
+    from .saves import notices, saves
+    note_scores = notices(cache)["scores"]     # cached in notices.json
     out = []
     for m in sess["matches"]:
         if only is not None and m["n"] != only:
@@ -559,6 +564,7 @@ def packets(cache: Path, out_root: Path | None = None, only: int | None = None, 
             died[d["t"]] = _death_time(t, lambda k: elim_score(cv2.imread(str(frame_path(cache, frames[k]))), elim_tpl),
                                        d["t"], after)
             after = d["t"] + 8.0      # don't find the previous death's banner
-        build_packet(cache, gdir, m, evs[m["n"]], t, own, kc, player, jobs, died, frames, hud_all, refresh)
+        build_packet(cache, gdir, m, evs[m["n"]], t, own, kc, player, jobs, died, frames, hud_all, refresh,
+                     saves(t, note_scores, m["start"], m["end"]))
         out.append(gdir / "packet")
     return out

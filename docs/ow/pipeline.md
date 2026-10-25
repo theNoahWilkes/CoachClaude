@@ -370,6 +370,30 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
   ~19k tokens.
 
+### Saves (`saves.py`)
+
+The "SAVED <ally>" notice is a small translucent-blue pill under the crosshair (portrait, heart,
+white capitals), up for 2.5-3 s, in the same stack as PROTECTED BY, the red kill pills and the
+elimination banner; the newest notice is on top and older ones move down ~0.03 of the height.
+roiscan crops the stack at native resolution ("notices", 0.15-0.45 of the height under the
+centre, 0.4 wide) at every keyframe; `saves.notices()` scales each crop to a 720 px frame and
+matches `assets/saved.png` (heart + "SAVED"), then `assets/saved_by.png` right after it for
+"SAVED BY" (a teammate saved the player). Cached in `<cache>/notices.json`; a cache from before
+the region gets the one extra roiscan pass on its next `owcoach packet`.
+
+2026-10-20, the whole session (11,856 keyframes): 38 saves found, all real by eye, none of the 6
+known ones missed, all 5 SAVED BY right; onset at >= 0.66 with another >= 0.6 in the next two
+frames. The lowest real onset scored 0.667 and the highest PROTECTED BY 0.645 (kept out by the
+second-frame rule), so the margin is thin: add a PROTECTED check if a false save shows up. The
+extra roiscan pass took 65 s with CUDA. At the 534 px thumbnail
+scale the word is ~8 px and PROTECTED BY scores as high as a faint SAVED, hence the native crop.
+Not read: who was saved. Two saves within a notice's life count once.
+
+`packet.json` → `saves`: [{t, clock, video_t, by}] and `counts.saves`; the match page shows the
+count and per 10 under the stats. Saves are routine for a support (38 in one session), so the
+digest only counts them: a save is worth a moment when it turned a fight, and the pipeline doesn't
+know fight outcomes yet (#39).
+
 ### The yardstick (`yardstick.py`, `owcoach yardstick`)
 
 ADR 0012 keeps the full read as the measure of the triage. Coach two copies of one session (copy

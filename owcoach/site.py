@@ -149,6 +149,9 @@ def _stats_table(m: dict) -> dict:
                                       ("Healing", pl.get("H"), p10.get("H"), tm.get("H"), en_avg.get("H"), 0),
                                       ("Mitigation", pl.get("MIT"), p10.get("MIT"), tm.get("MIT"), en_avg.get("MIT"), 0)):
         rows.append([lab, num(tot, default=NOT_READ), num(per, dg, NOT_READ), num(t2, dg, NOT_READ), num(e2, dg, NOT_READ)])
+    if m.get("saves") is not None:      # from the SAVED notice (saves.py), not the scoreboard
+        sv10 = m["saves"] * 600 / m["per10_s"] if m.get("per10_s") else None
+        rows.append(["Saves", num(m["saves"]), num(sv10, 1, NOT_READ), "", ""])
     rows.append(["Time dead", f"{num(m.get('time_dead_s'))} s", f"{num(m.get('dead_pct'), 1)} %", "", ""])
     rows.append(["Ults used", f"{num(m.get('ults_used'))} of {num(m.get('ults'))}", "", "", ""])
     note = [f"Final blows {num(m.get('final_blows'))}."]
@@ -200,6 +203,7 @@ def _game(gdir: Path, session: dict) -> dict:
     dead_pct = (round(100 * counts["time_dead_s"] / clock_s, 1) if counts.get("time_dead_s") is not None and clock_s else None)
     m = {"deaths": counts.get("deaths"), "time_dead_s": counts.get("time_dead_s"), "dead_pct": dead_pct,
          "ults": counts.get("ults"), "ults_used": counts.get("ults_used"), "final_blows": counts.get("final_blows"),
+         "saves": counts.get("saves"), "per10_s": clock_s or game.get("duration_s"),
          "death_flags": counts.get("death_flags") or {}, "killed_by": counts.get("killed_by") or {},
          "player": stats.get("player") or {}, "per10": per10,
          "teammate_same_role_per10": stats.get("teammate_same_role_per10"), "enemy_same_role_per10": stats.get("enemy_same_role_per10")}

@@ -34,6 +34,9 @@ REGIONS: dict[str, Region] = {
     # HP readout + health bar bottom left, ability squares + weapon bottom right
     "hud_hp": ("bl", 0.0, -0.181, 0.542, 0.0),
     "hud_abil": ("br", -0.547, -0.181, 0.0, 0.0),
+    # the notice stack under the crosshair: SAVED / PROTECTED BY / kill pills, newest on top
+    # (saves.py reads it; 2026-10-25, the top pill sits at 0.70-0.73 of the height)
+    "notices": ("c", -0.2, 0.15, 0.2, 0.45),
 }
 
 
@@ -72,13 +75,15 @@ def _chunk(cfg: dict, cache: Path, tag: str, start: float, dur: float, regions: 
         got = len(list((cache / "roi" / n / tag).glob("*.jpg")))
         if got != want:
             raise RuntimeError(f"roi {n} chunk {tag}: {got} crops vs {want} thumbnails")
-    (cache / "roi" / f"{tag}.done").write_text(json.dumps(names))
+    done = cache / "roi" / f"{tag}.done"
+    had = json.loads(done.read_text()) if done.exists() else []
+    done.write_text(json.dumps(had + [n for n in names if n not in had]))
     return want
 
 
 def roiscan(cache: Path, regions: dict[str, Region] | None = None, jobs: int = 4, quiet: bool = False) -> None:
-    """Crop `regions` (default REGIONS) for every scanned chunk; finished chunks are skipped
-    unless the region set changed."""
+    """Crop `regions` (default REGIONS) for every scanned chunk. A chunk is decoded again only
+    for the regions it doesn't have yet (a region added later costs one more pass for itself)."""
     regions = regions or REGIONS
     cfg = json.loads((cache / "scan.json").read_text())
     chunk = None
@@ -90,11 +95,12 @@ def roiscan(cache: Path, regions: dict[str, Region] | None = None, jobs: int = 4
 
     def todo(tag):
         p = cache / "roi" / f"{tag}.done"
-        return not p.exists() or json.loads(p.read_text()) != list(regions)
+        have = set(json.loads(p.read_text())) if p.exists() else set()
+        return {n: r for n, r in regions.items() if n not in have}
 
     def job(tag):
         s = int(tag)
-        n = _chunk(cfg, cache, tag, s, min(chunk or dur, dur - s), regions)
+        n = _chunk(cfg, cache, tag, s, min(chunk or dur, dur - s), todo(tag))
         if not quiet:
             print(f"  roi chunk {tag}: {n} frames", flush=True)
 

@@ -165,7 +165,8 @@ def digest(packet: dict, prefix: str, focuses: list[str]) -> str:
     chs = packet.get("chains") if "chains" in packet else chains(packet)
     L = [f"# {prefix} {g.get('map') or '?'} {g.get('result') or ''} ({g.get('mode') or '?'}, {_clock(g.get('duration_s') or 0)})".rstrip(),
          f"Heroes: {heroes}. Deaths {c.get('deaths', 0)}, final blows {c.get('final_blows', 0)}, "
-         f"ults used {c.get('ults_used', 0)} of {c.get('ults', 0)}.", ""]
+         f"ults used {c.get('ults_used', 0)} of {c.get('ults', 0)}, saves {c.get('saves', 0)} (routine for a support: "
+         "not a moment on their own).", ""]
     L.append("## Deaths")
     for d in packet.get("deaths") or []:
         L += [f"### {prefix} {d['id']} {d['clock']}", (d.get("facts") or "(no facts block)").rstrip(), ""]
