@@ -22,8 +22,11 @@ quiet match.
   together, e.g. "m03 d03+d04". The first death is usually the decision; the rest is what it cost.
 - A good play has no death to anchor it: cite its clock (a fight won at 2v5 with the player
   alive, an ult that turned a fight, a low-HP episode survived with the escape held).
-- Repeat patterns from the lessons file are worth one example, the clearest one, not every
-  instance.
+- A death that breaks the current focus or a recurring pattern is a strong pick even when the
+  pattern is already in the lessons file: the repeat is what the player most needs to see. An
+  escape that was ready, or a prompt that was on screen, and not used is the clearest kind.
+  Take the clearest instance per match, not every one.
+- Most of the shortlist is bad deaths and bad decisions; at most two good plays and one ult.
 - Mundane deaths stay out: a death in a fight the team had already lost, burst with nothing to
   answer it, the last seconds of a decided round.
 
