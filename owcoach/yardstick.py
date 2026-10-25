@@ -3,8 +3,8 @@
 Both are coached copies of the same session: one by `owcoach coach`, one by `owcoach coach
 --full-read`. This compares them for free, from what they wrote:
 
-- **Moments.** Each of the full read's session moments is *found* when the triage run's summary
-  has it too, *dropped* when the triage shortlisted it or a match writer nominated it but the
+- **Moments.** Each of the full read's session moments is *found* when a moment of the triage
+  run's summary cites it (in its heading or its body: one story can cover two deaths), *dropped* when the triage shortlisted it or a match writer nominated it but the
   summary left it out, and *missed* otherwise: the triage never saw it. Two moments are the same
   when they are in the same match and share a death or ult id or come within MATCH_S seconds.
 - **Focus grades.** The stoplight per focus in each match report, side by side.
@@ -172,7 +172,7 @@ def compare(triage: Path, full: Path) -> str:
     tally = {"found": 0, "dropped": 0, "missed": 0}
     for m in f_mom:
         t = times.get(m["match"], {})
-        if any(x["match"] == m["match"] and _same(x, m, t) for x in t_mom):
+        if any(x["match"] == m["match"] and _same(x["cited"], m, t) for x in t_mom):
             verdict = "found"
         elif m["match"] in tg and (_same(picks.get(m["match"], {"ids": set(), "clocks": []}), m, t)
                                    or _same(_nominations(tg[m["match"]]), m, t)):

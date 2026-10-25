@@ -376,7 +376,7 @@ ADR 0012 keeps the full read as the measure of the triage. Coach two copies of o
 the profile too), one with `owcoach coach` and one with `owcoach coach --full-read`, then
 `owcoach yardstick TRIAGE_COPY FULL_COPY` writes `<triage copy>/yardstick.md` for free:
 
-- each of the full read's session moments is **found** (the triage run's summary has it),
+- each of the full read's session moments is **found** (a moment of the triage run cites it, in its heading or body),
   **dropped** (the triage shortlisted it or a match writer nominated it, but the summary left it
   out) or **missed** (never shortlisted). A moment is what its `###` heading cites; same match
   and a shared death or ult id, or clocks (a range counts whole) within 10 s, is the same moment;
