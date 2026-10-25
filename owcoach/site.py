@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from coachlib.launcher import write_link
-from coachlib.site import num, slug, write
+from coachlib.site import num, slug, stoplights, write
 from coachlib.version import version
 
 from .config import library, profile_dir
@@ -35,7 +35,6 @@ COLUMNS = [{"key": "played", "label": "played", "align": "left"}, {"key": "map",
            {"key": "deaths", "label": "deaths"}, {"key": "d10", "label": "D/10"}, {"key": "dead_pct", "label": "dead %"},
            {"key": "h10", "label": "heal/10"}, {"key": "dmg10", "label": "dmg/10"}, {"key": "focus", "label": "focus"},
            {"key": "coached", "label": "coached"}]
-STOPLIGHT_RE = re.compile(r"^\s*[-*]\s*(🟢|🟡|🔴|⚪)", re.M)     # a report's "## Focus" lines (ADR 0012)
 # A clock (5:18) or a moment id (d04, u02, k07) in a report, optionally after a match (m03) in a
 # session summary. Not inside a link's text or target, not part of a longer word or time.
 MOMENT_RE = re.compile(r"(?<![\w\[/#@:.])(?:(m\d{2}) )?(?:([duk]\d{2})|(\d{1,2}:\d{2}))(?![\w\]:])")
@@ -127,11 +126,6 @@ def link_moments(text: str | None, games: dict[str | None, dict]) -> str | None:
 
     # leave code spans alone
     return "".join(part if part.startswith("`") else MOMENT_RE.sub(sub, part) for part in re.split(r"(`[^`\n]*`)", text))
-
-
-def stoplights(report: str | None) -> str:
-    """The stoplight per focus from a report's Focus section, e.g. '🟢🟡'."""
-    return "".join(STOPLIGHT_RE.findall(report or ""))
 
 
 def _stats_table(m: dict) -> dict:

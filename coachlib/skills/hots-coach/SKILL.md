@@ -72,30 +72,54 @@ Work through `references/rubric.md` for the checks to make and how to judge them
 
 ## 4. Write the coaching
 
-Per game, in this order, in prose with short lists only where they help:
-- One-line verdict: what decided the game (often team-level: an unmatched lane, an XP
-  source gap, lost objectives).
-- The player's deaths, each with timestamp, killers, and the concrete cause from the
-  positions data. Separate genuinely avoidable deaths from ones that came with a lost
-  team fight.
-- What went well, in a sentence or two of numbers (deaths, time dead, KP, healing or
-  damage). No praise padding.
-- At most 1-3 things to change, phrased as habits with a trigger ("when your lane partner
-  hearths, leave the lane too"), not vague advice ("position better").
+Coach a few moments for the whole session and say plainly what they show, the way a coach
+reviewing tape does. Mundane deaths and fights aren't coached. The page already shows each
+game's cold facts (stats table, timeline, every death with its killers, objectives and the
+script's rule notes), so no report repeats them.
 
-For a multi-game session, finish with a short session summary: record, `trend` output
-read in plain language, and the single habit that would have changed the most games.
+**The game report** (`coaching.md` in the game's folder) is short, in exactly this order:
+- `# <Map> (<hero>), <Win|Loss>, <length>`
+- **The verdict:** three sentences on how the game went and what decided it. Often team-level:
+  an unmatched lane, an XP source gap, lost objectives.
+- `## Focus`: one line per focus in the lessons file's "Current focus", named in at most six
+  words: a stoplight (🟢 green, 🟡 amber, 🔴 red, ⚪ not tested) by the counting rule in
+  `references/rubric.md` ("Focus grade"), the count, and the timestamps of its tests, held and
+  broken, e.g. `- 🟡 **Leave the lane with your partner**: held 2 of 4, 6:05, 11:00`. No
+  reasons: those go up to the session summary.
+- `## Pipeline issues` (section 6), or "None."
 
-**Write it down as well as saying it.** Each game's coaching goes, as written, to
-`coaching.md` in that game's folder (the `files:` path from `analyze`/`batch`; start it with
-a `# <Map> (<hero>), <Win|Loss>, <length>` heading). The session summary goes to
-`coaching.md` in the session folder (`games/<session date>/`). Then run `hotscoach site --open` so
-the page picks them up and opens in the browser, and end the reply by saying it's open (the
-CoachClaude link on the desktop opens it again later). The chat text and the files say the same thing; the files are what the player
-reads back later.
+Nothing else: no per-death write-ups, no "what went well", no habits. While you work through a
+game, keep for yourself the one to three moments most worth the player's time and what its
+focus tests showed; they go into the session summary.
 
-Tone: peer-to-peer, direct, no excessive praise or hedging. If the data can't support a
-claim (see blind spots in the rubric), say it's an inference.
+**The session summary** (`coaching.md` in the session folder, `games/<session date>/`), in
+this order:
+- `# Session <date>: <record>`, then two or three sentences on how the session went.
+- `## Moments`: about five for the whole session: avoidable deaths, particularly bad decisions,
+  teachable team-level moments the player could have changed, and a standout good play to keep
+  when there is one. Best first. Each is a `### N. <map> <M:SS>: <a few words>` heading and two
+  to four sentences: what happened, what it shows, and what to do next time or keep doing. A
+  mundane death doesn't make the list because nothing better turned up; four strong moments
+  beat five padded ones.
+- `## Focus`: for each focus, the session's stoplight and a short paragraph on what its tests
+  showed, in coach talk, with the two or three tests that show it best (`<map> M:SS`). A clean
+  focus is "no problems observed". When it wasn't tested, say so and what would have tested it.
+- `## Numbers`: `trend` output in one or two plain sentences: only what moved, or "normal
+  variation".
+- `## Next`: the single habit that would have changed the most games, as a trigger and an
+  action ("when your lane partner hearths, leave the lane too").
+
+A one-game session still gets a summary: its moments are that game's.
+
+**Voice.** Talk to the player as "you". Peer to peer, direct, no excessive praise or hedging.
+Plain words over numbers: no unit distances, percentages or counts in the prose unless the
+number is the point. If the data can't support a claim (see blind spots in the rubric), say
+it's an inference.
+
+Then run `hotscoach site --open` so the page picks the reports up and opens in the browser,
+and end the reply by saying it's open (the CoachClaude link on the desktop opens it again
+later). In chat, give the session summary's moments and next habit; the files are what the
+player reads back later.
 
 ## 5. Update the lessons file
 

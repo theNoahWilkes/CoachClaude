@@ -58,6 +58,14 @@ def num(v, digits=0, default="") -> str:
     return f"{v:,.{digits}f}"
 
 
+STOPLIGHT_RE = re.compile(r"^\s*[-*]\s*(🟢|🟡|🔴|⚪)", re.M)     # a report's "## Focus" lines (ADR 0012)
+
+
+def stoplights(report: str | None) -> str:
+    """The stoplight per focus from a match report's Focus section, e.g. '🟢🟡'."""
+    return "".join(STOPLIGHT_RE.findall(report or ""))
+
+
 def mmss(t: float) -> str:
     t = max(0, int(round(t or 0)))
     return f"{t // 60}:{t % 60:02d}"

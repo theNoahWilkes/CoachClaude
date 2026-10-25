@@ -81,3 +81,24 @@ Lead with what decided the game, then the player's share of it. In a loss driven
 macro the player's best lesson is usually still one avoidable death type. In a win, look
 for sloppiness after taking a lead. Never pad with generic advice; every point needs a
 timestamp or a number behind it.
+
+## Focus grade
+
+Each game report gives each current focus a **stoplight**: green, amber, red or not tested.
+Grade it from the list of situations that tested it, not from an overall feel.
+
+1. List every test: each moment the focus's trigger happened (for "leave the lane when your
+   partner leaves": every time the partner left a lane the player was in; for "stay within
+   reach of the tank": every fight and every death). Mark each one **held** or **broke**, with
+   its timestamp. `positions` around the time settles a doubtful one.
+2. Grade by the count:
+   - ⚪ **Not tested:** no tests.
+   - 🟢 **Green:** held in at least 3 of 4 tests, and no avoidable death was caused by breaking it.
+   - 🔴 **Red:** held in fewer than half the tests, or breaking it caused 3 or more avoidable deaths.
+   - 🟡 **Amber:** anything in between.
+3. Write the count with the stoplight, e.g. "🟡 held 2 of 4".
+
+A focus with parts is counted part by part and gets the lower stoplight. The stoplight is the
+game report's whole say on the focus; what the tests showed, in plain words, is the session
+summary's (SKILL.md section 4).
+

@@ -904,7 +904,7 @@ def notes_md(items):
 def _hots_tree():
     """The games folder as the tree coachlib.site renders (same shape as the Overwatch page)."""
     from urllib.parse import quote
-    from coachlib.site import num, slug
+    from coachlib.site import num, slug, stoplights
     player = configured("player", "HOTS_PLAYER") or ""
     root = games_dir()
     lessons_path = os.path.join(DATA_DIR, f"lessons-{player}.md")
@@ -966,6 +966,7 @@ def _hots_tree():
                               "spans": []}}
             if coached:
                 g["report_md"] = open(os.path.join(gdir, "coaching.md"), encoding="utf-8").read()
+                g["cells"]["focus"] = stoplights(g["report_md"])
             start = gname[11:16].replace(".", ":")
             sibs = (starts[(norm(m["map"]), gname[5:10])] | starts[(norm(m["map"]), date[5:])]) - {start}
             notes = notes_md(notes_for_game(log, patterns, m["map"], gname[:10], date, m.get("length"), start, sibs))
@@ -1027,7 +1028,7 @@ def _hots_tree():
                         {"key": "result", "label": "result", "align": "left"}, {"key": "hero", "label": "hero", "align": "left"},
                         {"key": "length", "label": "length"}, {"key": "deaths", "label": "deaths"}, {"key": "dead_pct", "label": "dead %"},
                         {"key": "kp", "label": "KP %"}, {"key": "healing", "label": "healing"}, {"key": "hero_damage", "label": "hero dmg"},
-                        {"key": "coached", "label": "coached"}],
+                        {"key": "focus", "label": "focus"}, {"key": "coached", "label": "coached"}],
             "days": days, "pages": [{"id": "lessons", "title": "Lessons", "md": lessons_md}], "tables": tables,
             "notes": ["Numbers come from the replay's tracker events (hotscoach analyze); reports are the coach's text, unedited.",
                       "A session is one evening: games before 06:00 count to the day before."],

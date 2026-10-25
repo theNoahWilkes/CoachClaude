@@ -49,7 +49,8 @@ known debt, not precedent. Strike each item when it lands.
       folder names.
 - [ ] User-facing verbs match across `owcoach` and `hotscoach`; Overwatch diagnostics move
       under a developer group.
-- [ ] Coaching follows ADR 0012 (decided 2026-10-25): text triage picks about five moments per
+- [x] ~~Coaching follows ADR 0012 (decided 2026-10-25): text triage picks about five moments per
       session, no whole-match overview skim outside dev mode, focus tests from the preprocessor,
-      match reports reduced to facts, verdict and stoplight in both games.
+      match reports reduced to facts, verdict and stoplight in both games.~~ Landed in #31-#34,
+      #38 and the HotS report shape.
 - [ ] Leftover: `hotscoach.py` duplicates coachlib's config and dev-mode helpers.
