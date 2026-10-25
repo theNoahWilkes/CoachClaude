@@ -24,11 +24,12 @@ from pathlib import Path
 
 from .briefs import _secs, shortlist
 from .coach import _logged_cost, game_dirs
+from .moments import KINDS, kinds_for
 
 MATCH_S = 10.0           # s: two moments of one match this close are the same moment
 LABELS = Path(__file__).resolve().parent.parent / "docs" / "ow" / "labels" / "deaths.md"
 
-CITE_RE = re.compile(r"(?<![\w:])(?:(m\d{2})\s+)?(?:([duk]\d{2})|(\d{1,2}:\d{2}))(?![\w:])")
+CITE_RE = re.compile(r"(?<![\w:])(?:(m\d{2})\s+)?(?:([duk]\d{2})|(\d{1,2}:\d{2})(?:\s*-\s*(\d{1,2}:\d{2}))?)(?![\w:])")
 LABEL_RE = re.compile(r"^###\s+(.+?)\s+/\s+(.+?)\s+(d\d{2})\b", re.M)
 LIGHT_RE = re.compile(r"^\s*[-*]?\s*(🟢|🟡|🔴|⚪)\s*\*\*(.+?)\*\*", re.M)
 
@@ -54,11 +55,12 @@ def _times(game: Path) -> dict[str, float]:
 
 
 def _cites(text: str, default: str | None = None) -> dict[str, dict]:
-    """Every cited moment in a text, per match prefix: {"m03": {"ids": {...}, "clocks": [...]}}.
-    A bare id or clock belongs to `default` (the match of a heading), or to the last match named."""
+    """Every cited moment in a text, per match prefix: {"m03": {"ids": {...}, "clocks": [(from, to)]}}.
+    A clock is a span (a point or a range, 3:11-3:58). A bare id or clock belongs to `default`
+    (the match of a heading), or to the last match named."""
     out: dict[str, dict] = {}
     cur = default
-    for m, mid, clock in CITE_RE.findall(text):
+    for m, mid, clock, to in CITE_RE.findall(text):
         cur = m or cur
         if not cur:
             continue
@@ -66,12 +68,14 @@ def _cites(text: str, default: str | None = None) -> dict[str, dict]:
         if mid:
             p["ids"].add(mid)
         else:
-            p["clocks"].append(_secs(clock))
+            p["clocks"].append((_secs(clock), _secs(to or clock)))
     return out
 
 
 def moments(summary: str) -> list[dict]:
-    """A session summary's `## Moments`: [{"title", "match", "ids", "clocks"}] per `### N.` entry."""
+    """A session summary's `## Moments`: [{"title", "match", "ids", "clocks", "cited"}] per `### N.`
+    entry. A moment is what its heading cites; "cited" adds its body, where other moments are
+    often mentioned in passing ("same story as m03 d02")."""
     body = _section(summary, "Moments")
     parts = re.split(r"^###\s+", body, flags=re.M)[1:]
     out = []
@@ -80,19 +84,21 @@ def moments(summary: str) -> list[dict]:
         head = re.search(r"\b(m\d{2})\b", title)
         if not head:
             continue
-        c = _cites(part, head.group(1)).get(head.group(1), {"ids": set(), "clocks": []})
-        out.append({"title": title, "match": head.group(1), "ids": c["ids"], "clocks": c["clocks"]})
+        k = head.group(1)
+        c = _cites(title, k).get(k, {"ids": set(), "clocks": []})
+        body = _cites(part, k).get(k, {"ids": set(), "clocks": []})
+        out.append({"title": title, "match": k, "ids": c["ids"], "clocks": c["clocks"], "cited": body})
     return out
 
 
 def _same(a: dict, b: dict, times: dict[str, float]) -> bool:
-    """Two citations of one match name the same moment: a shared id, or clocks (an id counts as
-    its clock) within MATCH_S."""
+    """Two citations of one match name the same moment: a shared id, or spans (an id counts as
+    its clock) within MATCH_S of each other."""
     if a["ids"] & b["ids"]:
         return True
-    ta = a["clocks"] + [times[i] for i in a["ids"] if i in times]
-    tb = b["clocks"] + [times[i] for i in b["ids"] if i in times]
-    return any(abs(x - y) <= MATCH_S for x in ta for y in tb)
+    ta = a["clocks"] + [(times[i], times[i]) for i in a["ids"] if i in times]
+    tb = b["clocks"] + [(times[i], times[i]) for i in b["ids"] if i in times]
+    return any(max(x0, y0) - min(x1, y1) <= MATCH_S for x0, x1 in ta for y0, y1 in tb)
 
 
 def _nominations(game: Path) -> dict:
@@ -109,6 +115,18 @@ def lights(game: Path) -> list[tuple[str, str]]:
     p = game / "packet" / "coaching.md"
     text = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
     return LIGHT_RE.findall(_section(text, "Focus"))
+
+
+def by_kind(lines: list[tuple[str, str]]) -> dict[str, tuple[str, bool]]:
+    """Stoplights per focus test kind: {kind: (stoplight, shared)}. A line names the kinds its
+    focus triggers on (moments.kinds_for); `shared` when one line grades several kinds, since the
+    writer merged them and its light is not one test's. A kind graded twice keeps the first."""
+    out: dict[str, tuple[str, bool]] = {}
+    for light, focus in lines:
+        kinds = kinds_for(focus)
+        for kind in kinds:
+            out.setdefault(kind, (light, len(kinds) > 1))
+    return out
 
 
 def _fold(s: str) -> str:
@@ -171,19 +189,19 @@ def compare(triage: Path, full: Path) -> str:
     if extra:
         L += ["Only in the triage run:"] + [f"- {x['title']}" for x in extra] + [""]
 
-    L += ["## Focus grades", "", "| match | full read | triage | |", "|---|---|---|---|"]
+    L += ["## Focus grades (paired by what each line tests: under half HP, down two, respawn)", "",
+          "| match | test | full read | triage | |", "|---|---|---|---|---|"]
     agree = total = 0
     for k in sorted(fg):
-        a = lights(fg[k])
-        b = lights(tg[k]) if k in tg else []
-        for i in range(max(len(a), len(b))):
-            x = a[i][0] if i < len(a) else "–"
-            y = b[i][0] if i < len(b) else "–"
-            name = (a[i] if i < len(a) else b[i])[1]
-            total += 1
-            agree += x == y
-            L.append(f"| {k} {name} | {x} | {y} | {'' if x == y else 'differs'} |")
-    L += ["", f"{agree} of {total} grades agree.", ""]
+        a, b = by_kind(lights(fg[k])), by_kind(lights(tg[k]) if k in tg else [])
+        for kind in [x for x in KINDS if x in a or x in b]:
+            (x, xs), (y, ys) = a.get(kind, ("–", False)), b.get(kind, ("–", False))
+            note = "one line for several tests" if xs or ys else ("" if x == y else "differs")
+            if x != "–" and y != "–" and not (xs or ys):
+                total += 1
+                agree += x == y
+            L.append(f"| {k} | {KINDS[kind]} | {x} | {y} | {note} |")
+    L += ["", f"{agree} of {total} comparable grades agree (both runs graded the test on a line of its own).", ""]
 
     L += ["## Labelled deaths", ""]
     lab = labelled(full, list(fg.values()))
@@ -194,12 +212,13 @@ def compare(triage: Path, full: Path) -> str:
         for g, did, head in lab:
             k = g.name[:3]
             death = {"ids": {did}, "clocks": []}
-            cited_f, cited_t = (any(m["match"] == k and _same(m, death, times[k]) for m in ms) for ms in (f_mom, t_mom))
+            cited_f, cited_t = (any(m["match"] == k and _same(m["cited"], death, times[k]) for m in ms) for ms in (f_mom, t_mom))
             read_t = k in tg and _read(tg[k], did)
             L.append(f"| {head} | {'yes' if _read(g, did) else 'no'} / {'yes' if cited_f else 'no'} "
                      f"| {'yes' if read_t else 'no'} / {'yes' if cited_t else 'no'} |")
         L += ["", "Judge what each run said against the label by hand or with a grader: this table only "
               "says whether it looked."]
 
-    L += ["", "## Cost", "", f"Full read ${cost(full):.2f}, triage run ${cost(triage):.2f}."]
+    L += ["", "## Cost", "", f"Full read ${cost(full):.2f}, triage run ${cost(triage):.2f}, from each copy's `.coach` logs. "
+          "A copy that reused another run's reader notes shows only what it ran itself."]
     return "\n".join(L).rstrip() + "\n"

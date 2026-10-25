@@ -378,9 +378,11 @@ the profile too), one with `owcoach coach` and one with `owcoach coach --full-re
 
 - each of the full read's session moments is **found** (the triage run's summary has it),
   **dropped** (the triage shortlisted it or a match writer nominated it, but the summary left it
-  out) or **missed** (never shortlisted). Same match and a shared death or ult id, or clocks
-  within 10 s, is the same moment;
-- the stoplight per focus per match, side by side;
+  out) or **missed** (never shortlisted). A moment is what its `###` heading cites; same match
+  and a shared death or ult id, or clocks (a range counts whole) within 10 s, is the same moment;
+- the stoplights per match, paired by the test each line grades (under half HP, down two,
+  respawn: `moments.kinds_for` on its wording). A line that grades several tests at once is
+  shown but not counted, since its light is not one test's;
 - the labelled deaths (`docs/ow/labels/deaths.md`) of the session: did each run read the death
   (`notes/dNN.md`) and cite it. Whether what it said matches the label is still judged by hand;
 - the cost from each copy's `.coach` logs.

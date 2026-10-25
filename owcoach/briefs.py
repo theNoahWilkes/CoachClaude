@@ -135,11 +135,12 @@ def triage_piece(session: Path, games: list[Path]) -> Piece:
     return Piece("triage", "triage", session, fill("triage", f), [out])
 
 
-PICK_RE = re.compile(r"^\s*[-*]\s*(m\d{2})\s+([duk]\d{2}(?:\s*\+\s*[duk]\d{2})*|\d{1,2}:\d{2})", re.M)
+PICK_RE = re.compile(r"^\s*[-*]\s*(m\d{2})\s+([duk]\d{2}(?:\s*\+\s*[duk]\d{2})*|\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?)", re.M)
 
 
 def shortlist(session: Path) -> dict[str, dict]:
-    """The triage's picks per match prefix: {"m03": {"ids": {"d03", "d04", "u02"}, "clocks": [575.0]}}."""
+    """The triage's picks per match prefix: {"m03": {"ids": {"d03", "d04", "u02"}, "clocks": [(575.0, 575.0)]}}.
+    A clock pick is a span: the triage sometimes writes a range (m01 3:11-3:58), and its end counts."""
     path = session / "triage.md"
     if not path.exists():
         return {}
@@ -149,7 +150,8 @@ def shortlist(session: Path) -> dict[str, dict]:
     for m, what in PICK_RE.findall(text):
         p = picks.setdefault(m, {"ids": set(), "clocks": []})
         if ":" in what:
-            p["clocks"].append(_secs(what))
+            a, _, b = what.partition("-")
+            p["clocks"].append((_secs(a.strip()), _secs((b or a).strip())))
         else:
             p["ids"].update(x.strip() for x in what.split("+"))
     return picks
@@ -255,9 +257,9 @@ def _lean_pieces(game: Path, packet: dict, lessons: Path, common: dict, heroes_l
     kinds = {k for f in focuses for k in kinds_for(f)}
     tests = [x for x in packet.get("focus_tests") or focus_tests(packet) if x["kind"] in kinds]
     moments = sorted(picks.get("clocks") or []) + sorted(
-        k["t"] for k in packet.get("final_blows", []) if k["id"] in ids)
+        (k["t"], k["t"]) for k in packet.get("final_blows", []) if k["id"] in ids)
     spans = _windows([(x["from"] - TEST_PAD_S, x["to"] + TEST_PAD_S) for x in tests]
-                     + [(t - MOMENT_PAD_S, t + MOMENT_PAD_S) for t in moments])
+                     + [(a - MOMENT_PAD_S, b + MOMENT_PAD_S) for a, b in moments])
     sheets = [o for o in packet.get("overview", []) if not o.get("extra")
               and any(_secs(o["from"]) <= b and _secs(o["to"]) + 5 >= a for a, b in spans)]
     lows = {(e["from"], e["to"]): e for e in (packet.get("hud_game") or {}).get("low_episodes", [])}
@@ -277,7 +279,8 @@ def _lean_pieces(game: Path, packet: dict, lessons: Path, common: dict, heroes_l
         f = dict(common, NN=nn, HEROES=heroes_line, SHEETS=", ".join(o["file"] for o in chunk),
                  WINDOWS=", ".join(f"{_clock(a)}-{_clock(b)}" for a, b in spans if b >= lo and a <= hi),
                  TESTS="\n".join(line(x) for x in mine) or "- none in these sheets",
-                 MOMENTS="\n".join(f"- {_clock(t)}" for t in moments if lo - MOMENT_PAD_S <= t <= hi + MOMENT_PAD_S) or "- none")
+                 MOMENTS="\n".join(f"- {_clock(t)}" + (f"-{_clock(u)}" if u > t else "") for t, u in moments
+                                   if t - MOMENT_PAD_S <= hi and u + MOMENT_PAD_S >= lo) or "- none")
         out.append(Piece("tests", f"tests_{nn}", game, fill("tests", f), [packet_dir / "notes" / f"tests_{nn}.md"]))
 
     ults = [u for u in packet.get("ults", []) if u["id"] in ids]
