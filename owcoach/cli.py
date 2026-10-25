@@ -174,6 +174,25 @@ def cmd_digest(a):
     print(f"digest -> {out} ({len(out.read_text(encoding='utf-8')) // 4:,} tokens, roughly)")
 
 
+def cmd_yardstick(a):
+    """Compare a triage run of a session with a full read of it (ADR 0012), for free: moments
+    found, dropped or missed, focus grades, labelled deaths and cost. Dev mode only."""
+    import sys
+    from .config import dev, resolve_session
+    from .yardstick import compare
+    if not dev():
+        raise SystemExit("yardstick: a dev-mode tool (ADR 0012); turn dev mode on with `owcoach config dev on`")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    t, f = resolve_session(a.triage), resolve_session(a.full)
+    for p in (t, f):
+        if not (p / "coaching.md").exists():
+            raise SystemExit(f"yardstick: {p} has no session summary (coaching.md); coach it first")
+    out = Path(a.out) if a.out else t / "yardstick.md"
+    out.write_text(compare(t, f), encoding="utf-8")
+    print(out.read_text(encoding="utf-8"))
+    print(f"yardstick -> {out}")
+
+
 def cmd_trend(a):
     from .history import format_trend, trend
     t = trend("games" if a.games else "session", a.games, a.role, a.hero)
@@ -470,6 +489,12 @@ def main(argv=None):
     s.add_argument("session", help="session folder or name")
     s.add_argument("--games", help='only these games, e.g. "m01 m04"')
     s.set_defaults(fn=cmd_digest, needs_tools=False)
+
+    s = sub.add_parser("yardstick", help="dev mode: compare a triage run of a session with a full read of it (free)")
+    s.add_argument("triage", help="the copy coached with `owcoach coach`")
+    s.add_argument("full", help="the copy coached with `owcoach coach --full-read`")
+    s.add_argument("--out", help="where to write the report (default <triage>/yardstick.md)")
+    s.set_defaults(fn=cmd_yardstick, needs_tools=False)
 
     s = sub.add_parser("focus", help="show the coach's focus proposal, or pick the next focus: owcoach focus 2 [4]")
     s.add_argument("n", nargs="*", help="option number(s) from <profile>/focus_proposal.md, e.g. 2 4 or 2,4")

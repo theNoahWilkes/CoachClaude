@@ -54,6 +54,7 @@ owcoach segment CACHE
 owcoach split   CACHE [--cut here|script|none] [--pad 3]
 owcoach sheet   CACHE [--every N] [--labels]          # contact sheets for eyeballing
 owcoach digest  SESSION [--games "m01 m03"]         # focus tests, chains, facts as text (free)
+owcoach yardstick TRIAGE_COPY FULL_COPY             # dev mode: a triage run against a full read (free)
 ```
 Cache: `<library>/.cache/<video stem>/` (`config.cache_for`; `scan.json`, `index.json`,
 `frames/<chunk>/*.jpg`, `features.npy`, `matches.json`, `states.json`, `events.json`, `hud.json`).
@@ -368,6 +369,24 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   the chains, ults, fights, final blows and the focus tests per focus, every line prefixed with
   the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
   ~19k tokens.
+
+### The yardstick (`yardstick.py`, `owcoach yardstick`)
+
+ADR 0012 keeps the full read as the measure of the triage. Coach two copies of one session (copy
+the profile too), one with `owcoach coach` and one with `owcoach coach --full-read`, then
+`owcoach yardstick TRIAGE_COPY FULL_COPY` writes `<triage copy>/yardstick.md` for free:
+
+- each of the full read's session moments is **found** (the triage run's summary has it),
+  **dropped** (the triage shortlisted it or a match writer nominated it, but the summary left it
+  out) or **missed** (never shortlisted). Same match and a shared death or ult id, or clocks
+  within 10 s, is the same moment;
+- the stoplight per focus per match, side by side;
+- the labelled deaths (`docs/ow/labels/deaths.md`) of the session: did each run read the death
+  (`notes/dNN.md`) and cite it. Whether what it said matches the label is still judged by hand;
+- the cost from each copy's `.coach` logs.
+
+A miss is a fix to the facts block, the preprocessor or the triage brief; a dropped moment is the
+session writer's call, so look at it before changing anything.
 
 ## Stats and trends (`stats.py`, `history.py`, `owcoach trend`)
 
