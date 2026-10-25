@@ -381,8 +381,11 @@ matches `assets/saved.png` (heart + "SAVED"), then `assets/saved_by.png` right a
 "SAVED BY" (a teammate saved the player). Cached in `<cache>/notices.json`; a cache from before
 the region gets the one extra roiscan pass on its next `owcoach packet`.
 
-2026-10-20, 72 frames around 6 notices: SAVED 0.69-0.95, PROTECTED BY 0.57-0.59, everything else
-<= 0.60; onset at >= 0.66 with another >= 0.6 in the next two frames. At the 534 px thumbnail
+2026-10-20, the whole session (11,856 keyframes): 38 saves found, all real by eye, none of the 6
+known ones missed, all 5 SAVED BY right; onset at >= 0.66 with another >= 0.6 in the next two
+frames. The lowest real onset scored 0.667 and the highest PROTECTED BY 0.645 (kept out by the
+second-frame rule), so the margin is thin: add a PROTECTED check if a false save shows up. The
+extra roiscan pass took 65 s with CUDA. At the 534 px thumbnail
 scale the word is ~8 px and PROTECTED BY scores as high as a faint SAVED, hence the native crop.
 Not read: who was saved. Two saves within a notice's life count once.
 

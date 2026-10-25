@@ -12,8 +12,11 @@ scaled to a 720 px frame height and matched against assets/saved.png (heart + "S
 cut at 720 px from m06 Shambali 2026-10-20). At the 534 px thumbnail scale the word is ~8 px
 tall and PROTECTED BY scores as high as a faint SAVED, so the thumbnails won't do.
 assets/saved_by.png ("BY", same frame scale) right after the match tells the two apart.
-Measured on 72 frames (6 notices, 2026-10-20): SAVED 0.69-0.95, PROTECTED BY 0.57-0.59, the rest
-<= 0.60; BY after a SAVED BY 0.67-1.0, after a SAVED <= 0.57. One SAVED BY sample only.
+Measured on the whole 2026-10-20 session (6 matches, 11,856 keyframes): 38 notices found, every
+one a real SAVED (checked by eye), none of the 6 known ones missed, 5 SAVED BY all right. Lowest
+real onset 0.667; the highest non-save 0.645 (PROTECTED BY under a kill pill), kept out by the
+second-frame rule. The margin is thin on both sides: a "PROTECTED" check like the BY one is the
+fix if a false save turns up. The notices roiscan pass took 65 s (CUDA), scoring 5 s.
 
 Output: <cache>/notices.json {"version", "n_frames", "scores": [[saved, by] or null per frame]},
 and per match a list of saves [{"t": session s, "by": bool}].
