@@ -366,9 +366,28 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   "on respawn"), so an action like "back off to the last wall toward your spawn" doesn't pull in
   low-HP and respawn windows. A focus whose wording names no kind gets every kind.
 - `owcoach digest SESSION` writes `<session>/digest.md`: per match, every death's facts block,
-  the chains, ults, fights, final blows and the focus tests per focus, every line prefixed with
+  the chains, ults, fights, saves, final blows and the focus tests per focus, every line prefixed with
   the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
   ~19k tokens.
+
+### Saves (`saves.py`)
+
+The "SAVED <ally>" notice is a small translucent-blue pill under the crosshair (portrait, heart,
+white capitals), up for 2.5-3 s, in the same stack as PROTECTED BY, the red kill pills and the
+elimination banner; the newest notice is on top and older ones move down ~0.03 of the height.
+roiscan crops the stack at native resolution ("notices", 0.15-0.45 of the height under the
+centre, 0.4 wide) at every keyframe; `saves.notices()` scales each crop to a 720 px frame and
+matches `assets/saved.png` (heart + "SAVED"), then `assets/saved_by.png` right after it for
+"SAVED BY" (a teammate saved the player). Cached in `<cache>/notices.json`; a cache from before
+the region gets the one extra roiscan pass on its next `owcoach packet`.
+
+2026-10-20, 72 frames around 6 notices: SAVED 0.69-0.95, PROTECTED BY 0.57-0.59, everything else
+<= 0.60; onset at >= 0.66 with another >= 0.6 in the next two frames. At the 534 px thumbnail
+scale the word is ~8 px and PROTECTED BY scores as high as a faint SAVED, hence the native crop.
+Not read: who was saved. Two saves within a notice's life count once.
+
+`packet.json` → `saves`: [{t, clock, video_t, by}]. The digest lists them, so the triage can pick
+a save as a good play without any image being read.
 
 ### The yardstick (`yardstick.py`, `owcoach yardstick`)
 

@@ -14,7 +14,7 @@ and so readers look at the overview cells of the focus tests only.
   (the player, on m03 Hollywood 2026-10-20: a Fade into the open with ult ready, then a forced
   fight out of spawn 20 s later with the ult that should have been used).
 - **The digest** is one match as text for the triage: header, every death's facts block, the
-  chains, ults, fights and the focus tests, with the match folder's prefix so every moment can
+  chains, ults, fights, saves and the focus tests, with the match folder's prefix so every moment can
   be cited as `m03 d04` or `m03 5:18`.
 """
 from __future__ import annotations
@@ -185,6 +185,9 @@ def digest(packet: dict, prefix: str, focuses: list[str]) -> str:
     L += ["", "## Fights (from the HUD: HP changes, kills, deaths, ults)"]
     fights = (packet.get("hud_game") or {}).get("fights") or []
     L.append(", ".join(f"{f['from']}-{f['to']}" for f in fights) if fights else "None read.")
+    L += ["", "## Saves (the SAVED notice: a teammate kept alive)"]
+    sv = packet.get("saves") or []
+    L += [f"- {prefix} {x['clock']} " + ("a teammate saved you" if x.get("by") else "you saved a teammate") for x in sv] or ["None seen."]
     L += ["", "## Final blows"]
     fbs = packet.get("final_blows") or []
     L.append(", ".join(f"{k['id']} {k['clock']} {_ab(k.get('alive_before'))}" for k in fbs) if fbs else "None.")
