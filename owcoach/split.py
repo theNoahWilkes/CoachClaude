@@ -89,12 +89,15 @@ def video_args(cfg: dict, mode: str) -> tuple[list[str], list[str]]:
     meta = cfg["probe"]
     ten = (meta.get("pix_fmt") or "").endswith("10le")
     pre = ["-hwaccel", "cuda"] if cfg.get("hwaccel") == "cuda" else []   # decoded frames come back to RAM for the crop
+    # ShadowPlay tags HDR10 with the transfer only, so an HDR recording gets BT.2020 for any tag
+    # it leaves out (players need primaries and matrix too to show it as HDR)
+    hdr10 = {"color_primaries": "bt2020", "color_transfer": "smpte2084", "color_space": "bt2020nc"} if meta.get("hdr") else {}
+    tags = {k: meta[k] if meta.get(k) not in (None, "unknown") else hdr10.get(k)
+            for k in ("color_primaries", "color_transfer", "color_space", "color_range")}
     color = [a for k, flag in (("color_primaries", "-color_primaries"), ("color_transfer", "-color_trc"),
                                ("color_space", "-colorspace"), ("color_range", "-color_range"))
-             if meta.get(k) and meta[k] != "unknown" for a in (flag, meta[k])]
-    if meta.get("hdr") and not color:   # a scan.json from before probe read the colour tags
-        color = ["-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc"]
-    fps = meta.get("r_fps") or meta.get("avg_fps") or 60
+             if tags[k] for a in (flag, tags[k])]
+    fps = meta.get("avg_fps") or meta.get("r_fps") or 60   # VFR: r_fps reads 120 on a 60 fps recording
     return pre, maps + [
         "-vf", "crop={}:{}:{}:{}".format(*cfg["crop"]) + (",format=p010le" if ten else ""),
         "-c:v", "hevc_nvenc", "-preset", "p5", "-tune", "hq", "-rc", "vbr", "-cq", str(CQ), "-b:v", "0",
