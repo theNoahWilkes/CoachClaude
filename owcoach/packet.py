@@ -109,6 +109,7 @@ NOTES = [
     "alive_before is the last reading of the players-alive counter before the event (age_s old).",
     "Ult state is ready / not ready only (no charge %); 'used' means the ready icon went away while alive.",
     "Death flags: first_down = 5v5 just before (no teammate down yet), team_ahead / team_behind / even_fight compare the counts; short_life = died within 20 s of respawning; repeat_killer = 3+ deaths to that player. Flags are leads, not verdicts.",
+    "focus_tests (owcoach/moments.py): every window where a focus could be tested, in time order: kind low = a low-HP episode, down_two = the team down two or more while the player is alive (from the alive counter), respawn = the 20 s after a respawn; each with from / to, what, and the death it ended in if any. Which kinds test the current focus is matched from its wording when the digest is written. chains = runs of deaths where each came within 20 s of respawning from the one before (one decision and its consequence).",
     "Objective numbers: control capture %, push / competitive escort distance in metres; quick-play escort progress isn't read.",
 ]
 
@@ -481,6 +482,8 @@ def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own:
         "alive_series": [[G.at(a["t"])["t"], a["ally"], a["enemy"]] for a in ev.get("alive", [])],
         "notes": NOTES,
     }
+    from .moments import chains, focus_tests
+    packet["focus_tests"], packet["chains"] = focus_tests(packet), chains(packet)
     (pdir / "packet.json").write_text(json.dumps(packet, indent=1, ensure_ascii=False), encoding="utf-8")
     (pdir / "packet_slim.json").write_text(json.dumps(slim_packet(packet), indent=1, ensure_ascii=False), encoding="utf-8")
     _playlist(pdir, deaths, ult_recs)
