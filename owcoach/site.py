@@ -12,6 +12,7 @@ Rebuilt at the end of `owcoach run` and `owcoach coach`.
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ from coachlib.version import version
 from .config import library, profile_dir
 
 PAGE_NAME = "coaching.html"
+NOT_READ = "–"
 SESSION_RE = re.compile(r"^(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})\.(\d+)$")
 DATE_RE = re.compile(r"^(\d{4})\.(\d{2})\.(\d{2}) - (.+)$")
 COLUMNS = [{"key": "played", "label": "played", "align": "left"}, {"key": "map", "label": "map", "align": "left"},
@@ -146,15 +148,17 @@ def _stats_table(m: dict) -> dict:
                                       ("Damage", pl.get("DMG"), p10.get("DMG"), tm.get("DMG"), en_avg.get("DMG"), 0),
                                       ("Healing", pl.get("H"), p10.get("H"), tm.get("H"), en_avg.get("H"), 0),
                                       ("Mitigation", pl.get("MIT"), p10.get("MIT"), tm.get("MIT"), en_avg.get("MIT"), 0)):
-        rows.append([lab, num(tot), num(per, dg), num(t2, dg), num(e2, dg)])
+        rows.append([lab, num(tot, default=NOT_READ), num(per, dg, NOT_READ), num(t2, dg, NOT_READ), num(e2, dg, NOT_READ)])
     rows.append(["Time dead", f"{num(m.get('time_dead_s'))} s", f"{num(m.get('dead_pct'), 1)} %", "", ""])
-    extra = f"final blows {num(m.get('final_blows'))}"
+    rows.append(["Ults used", f"{num(m.get('ults_used'))} of {num(m.get('ults'))}", "", "", ""])
+    note = [f"Final blows {num(m.get('final_blows'))}."]
     if m.get("death_flags"):
-        extra += " · flags " + ", ".join(f"{k} {v}" for k, v in m["death_flags"].items())
+        note.append("Death flags: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in m["death_flags"].items()) + ".")
     if m.get("killed_by"):
-        extra += " · killed by " + ", ".join(f"{k} ×{v}" for k, v in m["killed_by"].items())
-    rows.append(["Ults", f"{num(m.get('ults_used'))} of {num(m.get('ults'))}", extra, "", ""])
-    return {"header": ["", "game", "per 10", "other same role", "enemy same role"], "rows": rows}
+        note.append("Killed by (kill-feed names): " + ", ".join(f"{k} ×{v}" for k, v in m["killed_by"].items()) + ".")
+    note.append(f"A {NOT_READ} means it wasn't read off the final scoreboard.")
+    return {"header": ["", "game", "per 10", "other same role", "enemy same role"], "rows": rows,
+            "note": " ".join(html.escape(x) for x in note)}
 
 
 def _game(gdir: Path, session: dict) -> dict:
