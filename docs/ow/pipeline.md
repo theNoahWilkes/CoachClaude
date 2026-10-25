@@ -43,15 +43,15 @@ The 21:9 crop is auto-detected (`probe.detect_crop`). HDR is tonemapped with
 resolution or aspect), the HUD template and pixel ROIs below **must be recalibrated**: they are
 in 1280-wide, tonemapped, cropped-thumbnail coordinates.
 
-Ask the player before deleting anything in their Videos folder, re-encoding (stream copy only
-unless asked), or changing their ShadowPlay settings.
+Ask the player before deleting anything in their Videos folder, re-encoding anything beyond the
+new matches `split` cuts (below), or changing their ShadowPlay settings.
 
 ## Code layout (`owcoach/`, Python 3.10+, deps: numpy, opencv-python, ffmpeg, tesseract)
 
 ```
 owcoach scan    SESSION.mp4 [--jobs 2] [--chunk 600] [--budget S] [--hwaccel auto|cuda|none]
 owcoach segment CACHE
-owcoach split   CACHE [--cut here|script|none] [--pad 3]
+owcoach split   CACHE [--cut here|script|none] [--pad 3] [--video auto|crop|copy] [--recut]
 owcoach sheet   CACHE [--every N] [--labels]          # contact sheets for eyeballing
 owcoach digest  SESSION [--games "m01 m03"]         # focus tests, chains, facts as text (free)
 owcoach yardstick TRIAGE_COPY FULL_COPY             # dev mode: a triage run against a full read (free)
@@ -67,6 +67,13 @@ Every CACHE argument also accepts the recording path or its bare stem (`config.r
   straight from the source video for OCR/stills.
 - `segment.py`: per-frame features + match logic (details below).
 - `split.py`: per-match bundle folders; `--cut here` runs ffmpeg, `--cut script` writes `cut_matches.ps1`.
+  `match.mp4` is only for watching (every still is grabbed from the recording), so it holds the
+  game area alone: `--video auto` re-encodes the `scan.json` crop on the GPU (`hevc_nvenc`, CQ 23,
+  Main10 with the recording's HDR10 colour tags, 0.5 s GOP, audio copied), and falls back to a
+  stream copy when there are no bars or no NVENC. The re-encode cuts frame-exact at `clip_offset`;
+  a copy starts at the keyframe before it. `match.json` → `clip_video` says which (`copy` when
+  absent). An existing `match.mp4` is only re-made when the match boundaries move, or with
+  `--recut`, so re-running split never re-encodes the library on its own.
 - `sheet.py`: contact sheets. `assets/hud_ref.png` is the HUD template (frame[420:534, 0:300] of a
   spawn-room thumbnail).
 
@@ -551,7 +558,7 @@ and don't trust visual recognition.
     trend.json, coaching.md, .coach\*.jsonl    written by `owcoach coach`
 <library>\coaching.html                   the page over everything (`owcoach site`)
     m01_victory_escort_dorado\
-        match.mp4           stream copy of the match (+3 s pad)
+        match.mp4           the match (+3 s pad), game area only (GPU re-encode; stream copy without NVENC)
         match.json          boundaries, result, map, mode, queue, clock, TAB timestamps (+ clip-relative)
         events.json, scoreboard_final.jpg, summary.jpg | rank.jpg, sheet.jpg
         packet\             packet.json, packet_slim.json, facts\dNN.md, frames\, overview\, moments.m3u,

@@ -13,7 +13,7 @@
   owcoach segment CACHE                          classify frames -> matches.json
   owcoach events  CACHE                          kill feed -> deaths / final blows per match
   owcoach hud     CACHE                          HP and ability states at 2 fps
-  owcoach split   CACHE [--out DIR]              cut matches out with ffmpeg -c copy
+  owcoach split   CACHE [--out DIR] [--recut]    cut matches out (game area only, GPU re-encode)
   owcoach packet  CACHE [--game N]               per-game coaching packet (stills + packet.json)
   owcoach digest  SESSION                        every match's deaths, chains and focus tests as text
   owcoach trend   [--games N] [--role R] [--hero H]  per-10 stats: recent vs baseline
@@ -101,7 +101,7 @@ def cmd_split(a):
     from .split import split
     cache = resolve_cache(a.cache)
     for p in split(cache, Path(a.out) if a.out else None, pad=a.pad, dry_run=a.dry_run,
-                   cut=a.cut):
+                   cut=a.cut, video_kind=a.video, recut=a.recut):
         print(p)
 
 
@@ -462,6 +462,11 @@ def main(argv=None):
     s.add_argument("--dry-run", action="store_true")
     s.add_argument("--cut", choices=["here", "script", "none"], default="here",
                    help="here: ffmpeg now; script: write cut_matches.ps1 for Windows; none: skip")
+    s.add_argument("--video", choices=["auto", "crop", "copy"], default="auto",
+                   help="match.mp4: crop = GPU re-encode without the black bars, copy = stream copy; "
+                        "auto = crop when there are bars and NVENC works")
+    s.add_argument("--recut", action="store_true",
+                   help="re-make every match.mp4 even if it exists (e.g. to crop an older stream copy)")
     s.set_defaults(fn=cmd_split)
 
     s = sub.add_parser("hero", help="write <profile>/heroes/<Hero>.md from the Overwatch wiki (reference for the coach)")
