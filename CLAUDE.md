@@ -32,6 +32,9 @@ one starts with a new ADR that supersedes it. The ones most often relevant:
 - **Coach a few moments; each input earns its place**
   ([0012](docs/adr/0012-coach-a-few-moments.md)). Measure what an input adds before adding it.
 
+- **The page acts through a local server** ([0013](docs/adr/0013-page-acts-through-a-local-server.md)).
+  A button calls the same function as its CLI command; opened as a file, it copies the command.
+
 Overwatch pipeline internals, stage by stage, are in [docs/ow/pipeline.md](docs/ow/pipeline.md).
 
 ## Where the code still lags the docs

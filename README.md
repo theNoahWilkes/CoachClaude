@@ -10,8 +10,14 @@ Post-game coaching for **Overwatch 2** (from ShadowPlay recordings) and **Heroes
 
 Everything the coaches write goes to one page per game you can open and browse:
 `coaching.html`, with every session, game, report, still and clip linked. It opens in your
-browser when coaching finishes, and `setup` puts a **CoachClaude** link on your desktop that
-opens it any time (delete the link if you don't want it; it won't come back).
+browser when coaching finishes, and `setup` puts a **CoachClaude** shortcut on your desktop
+that opens it any time (delete it if you don't want it; it won't come back).
+
+The page has buttons: pick your next focus from the focus proposal, or compress a match you're
+keeping (its clip shrinks to about a third, re-encoded on the GPU). The desktop shortcut starts
+a small server on your own PC (`owcoach serve`, reachable from nowhere else) so the buttons
+work, and it stops by itself once the page has been closed for a while. Opened as a plain file,
+each button copies its command for a terminal instead.
 
 ## Install
 
@@ -71,6 +77,8 @@ owcoach new                 # recordings not in the library yet
 owcoach coach --new         # process + coach them (one claude process per game; -y skips the prompt)
 owcoach coach "2026.10.16 - 22.23.04.03" --games "m01"   # re-coach one game
 owcoach focus               # the coach's focus proposal; `focus 2 4` picks
+owcoach serve               # the page with working buttons (what the desktop shortcut runs)
+owcoach compress "<session>" m02   # shrink a match's clip for storage (GPU; no matches = all)
 owcoach run "<stem>"        # only the local stages, no coaching
 owcoach site --open         # <library>/coaching.html (default ~/Videos/owcoach)
 owcoach trend --role support

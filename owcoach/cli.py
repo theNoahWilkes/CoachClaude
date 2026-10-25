@@ -4,6 +4,8 @@
   owcoach new                                    recordings in the capture folders not in the library yet
   owcoach run     REC.mp4|STEM                   every local stage: scan segment events hud split packet
   owcoach coach   [SESSION ...] [--new]          per-game claude processes + summary (the paid part)
+  owcoach compress SESSION [m01 ...]             re-encode match clips smaller for storage (GPU)
+  owcoach serve                                  the page with working buttons (local server)
   owcoach config  [KEY]                          the resolved paths
   owcoach migrate --from OLD_DIR                 move the pre-2026-10-17 layout into the library
 
@@ -272,8 +274,8 @@ def cmd_setup(a):
     Path(ow["profile"]).mkdir(parents=True, exist_ok=True)
     for k in ("captures", "library", "profile"):
         print(f"  {k:10s} {ow.get(k)}")
-    from coachlib.launcher import write_link
-    link = write_link(create=True)
+    from coachlib.launcher import write_link, write_shortcut
+    link = write_shortcut() or write_link(create=True)
     print(f"  desktop    {link or 'no desktop folder found; the page is <library>/coaching.html'}")
     if not ow.get("captures"):
         print("  no capture folder found: rerun with --captures <folder with the recordings>")
@@ -337,6 +339,30 @@ def cmd_site(a):
     if a.open:
         from coachlib.launcher import open_page
         open_page(out)
+
+
+def cmd_compress(a):
+    import sys
+    from .compress import compress, state
+    from .config import resolve_session
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sdir = resolve_session(a.session)
+    if not sdir.is_dir():
+        raise SystemExit(f"compress: no session {a.session!r} in the library")
+    want = {g[:3] for g in a.games}
+    dirs = [d for d in sorted(sdir.glob("m[0-9]*")) if d.is_dir() and (not want or d.name[:3] in want)]
+    todo = [d for d in dirs if state(d) == "big"]
+    if not todo:
+        raise SystemExit("compress: nothing to compress (already compressed, or no match.mp4)")
+    for d in todo:
+        print(compress(d), flush=True)
+    from .site import build
+    build()
+
+
+def cmd_serve(a):
+    from .serve import serve
+    serve(port=a.port, open_browser=a.open, idle=a.idle * 60)
 
 
 def cmd_coach(a):
@@ -543,6 +569,17 @@ def main(argv=None):
     s.add_argument("--out", help="write the page somewhere else")
     s.add_argument("--open", action="store_true", help="open it in the browser")
     s.set_defaults(fn=cmd_site, needs_tools=False)
+
+    s = sub.add_parser("compress", help="re-encode matches' match.mp4 on the GPU for storage (~1/3 the size), in place")
+    s.add_argument("session", help="session folder or name")
+    s.add_argument("games", nargs="*", help="only these matches, e.g. m01 m04 (default: every one)")
+    s.set_defaults(fn=cmd_compress)
+
+    s = sub.add_parser("serve", help="open the page with working buttons (pick the focus, ...): a local server on 127.0.0.1")
+    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--no-open", dest="open", action="store_false", help="don't open the browser")
+    s.add_argument("--idle", type=float, default=30, metavar="MIN", help="stop after this many minutes without the page open (default 30)")
+    s.set_defaults(fn=cmd_serve, needs_tools=False)
 
     s = sub.add_parser("coach", help="coach sessions: one claude process per game, then the summary (paid)")
     s.add_argument("session", nargs="*", help="session folder(s) or name(s); none = every new recording")

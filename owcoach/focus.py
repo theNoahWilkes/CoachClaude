@@ -28,7 +28,7 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from .profile import profile_dir
+from .config import profile_dir
 
 CURRENT = "## Current focus"
 OPTIONS = "## Focus options"

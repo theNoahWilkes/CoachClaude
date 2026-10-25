@@ -136,6 +136,12 @@ only view of the images.
 The process that judges one match from its reader notes and the packet and writes the match's
 report and `notes/summary.md`.
 
+**Compress**:
+Re-encode a match's clip (`match.mp4`) on the GPU so it keeps about a third of its size, for a
+match the player wants to keep but not review closely again. The default clip is a lossless
+stream copy.
+_Avoid_: archive, shrink, transcode
+
 **Driver**:
 `owcoach coach`: the code that cuts matches into pieces, fills the briefs, runs the processes
 and the session summary, and rebuilds the page.

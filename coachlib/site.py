@@ -7,7 +7,7 @@ collect_hots) decides the content and hands over this shape:
            tables [...] (home extras), notes [str], other {title, href} | None, banner (md) | None
   day:     date (YYYY-MM-DD), sessions [session], combined [session]   (combined = a summary over sessions)
   session: id, label, date, kind ("session" | "combined"), sub (html), games [game], summary_md,
-           tables [table], warn (str)
+           tables [table], warn (str), actions [action] (on the day page, after its matches table)
   game:    id, title, nav (sidebar text, without the result) | None, sub (html), result (class suffix),
            coached, processed, cells {key: str | {text, cls}},
            warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
@@ -20,7 +20,15 @@ collect_hots) decides the content and hands over this shape:
   moment:  id, kind (css class), title, extra (small text), flags [str], video_t | None, clock,
            stills [{src, label, title}], details [detail]
   detail:  summary, md | pre | html
-  page:    id, title, nav, intro (html) | None, md
+  page:    id, title, nav, intro (html) | None, md, actions [action] (above the md)
+  action:  label, action (name the local server answers), args {} | None, cmd (the same thing as a
+           CLI command, copied when the page is opened as a file), title (hover text) | None,
+           input (an args key filled from a text box; cmd has {} where the text goes) | None,
+           placeholder | None, text (a line before the button) | None
+           game.actions sit under the game's title the same way.
+
+Buttons: an action is a button. Served by coachlib.serve, the page carries a token and a click
+POSTs to /api/<action>; opened as a file, a click copies `cmd` to the clipboard instead.
 
 A link to `#g/<game id>@<seconds>` opens that game's page and plays its clip from that time
 (the collector writes these into report and summary markdown, so a clock in the text is a clip).
@@ -36,6 +44,7 @@ markdown-it-py for the markdown bodies.
 from __future__ import annotations
 
 import html
+import json
 import re
 from datetime import date as _date
 from pathlib import Path
@@ -138,6 +147,20 @@ def timeline_svg(tl: dict | None) -> str:
     return "".join(out) + f'<div class="tl-ticks">{ticks}</div>'
 
 
+def actions_html(acts: list[dict] | None) -> str:
+    """Buttons for the local server (see coachlib.serve), one row each."""
+    rows = []
+    for a in acts or []:
+        attrs = "" if not a.get("action") else (f'class="act" data-action="{e(a["action"])}" data-args="{e(json.dumps(a.get("args") or {}))}" '
+                 f'data-cmd="{e(a.get("cmd") or "")}"' + (f' title="{e(a["title"])}"' if a.get("title") else "")
+                 + (f' data-input="{e(a["input"])}"' if a.get("input") else ""))
+        box = f'<input type="text" placeholder="{e(a.get("placeholder") or "")}">' if a.get("input") else ""
+        text = f'<span>{a["text"]}</span>' if a.get("text") else ""
+        btn = f'<button {attrs}>{e(a["label"])}</button>' if a.get("action") else ""
+        rows.append(f'<div class="actrow">{text}{box}{btn}</div>')
+    return f'<div class="acts">{"".join(rows)}</div>' if rows else ""
+
+
 def _detail(d: dict) -> str:
     body = (f'<div class="md">{md(d["md"])}</div>' if d.get("md") else
             f'<pre class="facts">{e(d["pre"])}</pre>' if d.get("pre") else d.get("html") or "")
@@ -174,6 +197,7 @@ def _game(tree: dict, g: dict, day: dict, prev: dict | None, nxt: dict | None) -
         out.append(f'<p class="sub">{g["sub"]}</p>')
     for w in g.get("warnings") or []:
         out.append(f'<p class="warn">{w}</p>')
+    out.append(actions_html(g.get("actions")))
     if g.get("tables") or g.get("images"):
         out.append('<div class="two"><div>' + "".join(table_html(t) for t in g.get("tables") or []) + "</div>"
                    + '<div class="imgs">' + "".join(f'<a href="{e(i["src"])}" target="_blank"><img src="{e(i["src"])}" loading="lazy" alt="{e(i.get("alt"))}"></a>'
@@ -229,6 +253,8 @@ def _day(tree: dict, day: dict) -> str:
     out.append(f'<p class="sub">{" · ".join(x for x in [head] + subs if x)}</p>')
     if games:
         out.append(games_table(tree, games))
+    for s in parts:
+        out.append(actions_html(s.get("actions")))
     summaries = [s for s in parts if s.get("summary_md")]
     for s in parts:
         if s.get("summary_md"):
@@ -310,6 +336,14 @@ button.seek{background:#2a3140;color:var(--ink);border:1px solid var(--line);bor
 .strip a{position:relative;flex:0 0 auto}.strip img{height:120px;display:block;border:1px solid var(--line)}
 .strip span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);font-size:11px;padding:0 4px;border-radius:2px}
 details{margin:6px 0}summary{cursor:pointer;color:var(--dim)}pre.facts{white-space:pre-wrap;font-size:12.5px;background:#101214;padding:8px;line-height:1.4}
+.acts{margin:10px 0 14px}.actrow{display:flex;gap:10px;align-items:center;margin:6px 0;max-width:900px}.actrow span{flex:1}
+.dim{color:var(--dim)}#jobs a{margin-left:6px;cursor:pointer}
+.actrow input{flex:1;background:#101214;color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:4px 8px;font:inherit}
+button.act{background:#3a2f18;color:var(--ink);border:1px solid var(--acc);border-radius:3px;padding:4px 12px;cursor:pointer;font:inherit;font-size:14px;white-space:nowrap}
+button.act:hover{background:#4a3a1c}button.act:disabled{opacity:.5;cursor:wait}button.act.on{background:var(--acc);color:#141619}
+#toast{position:fixed;right:16px;bottom:16px;max-width:460px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);padding:10px 14px;display:none;z-index:9;white-space:pre-wrap}
+#toast.bad{border-left-color:var(--red)}#toast.on{display:block}
+#jobs{position:fixed;left:16px;bottom:16px;background:var(--panel);border:1px solid var(--line);padding:6px 12px;font-size:13px;color:var(--dim);display:none;z-index:9}#jobs.on{display:block}
 @media(max-width:900px){.two{grid-template-columns:1fr}body{grid-template-columns:1fr}nav{position:static;height:auto;max-height:40vh}main{padding:12px 16px}}
 """
 
@@ -338,6 +372,45 @@ JS = """
     var m=e.target.closest('[data-moment]');if(m){var pg=m.closest('.page');var el=pg&&pg.querySelector('[id$="-'+m.getAttribute('data-moment')+'"]');if(el)el.scrollIntoView({block:'start'});}
   });
   show();
+
+  // Buttons (coachlib.serve). Served: POST with the page's token. A file: copy the command.
+  var API=window.COACH_API,toastT;
+  function toast(msg,bad){var t=document.getElementById('toast');t.textContent=msg;t.className='on'+(bad?' bad':'');
+    clearTimeout(toastT);toastT=setTimeout(function(){t.className='';},bad?12000:6000);}
+  function copy(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text).catch(function(){fallback(text);});
+    fallback(text);}
+  function fallback(text){var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');}catch(e){}ta.remove();}
+  function post(name,args){
+    return fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json','X-Coach-Token':API.token},body:JSON.stringify(args)})
+      .then(function(r){return r.json();});}
+  function act(b){
+    var args=JSON.parse(b.getAttribute('data-args')||'{}'),key=b.getAttribute('data-input'),cmd=b.getAttribute('data-cmd');
+    if(key){var inp=b.parentNode.querySelector('input'),v=(inp&&inp.value||'').trim();
+      if(!v){toast('Type it in the box first.',true);return;}args[key]=v;cmd=cmd.replace('{}',v.replace(/"/g,'\\\\"'));}
+    if(!API){copy(cmd);toast('Copied: '+cmd+'\\nPaste it in a terminal. Opened from the CoachClaude desktop shortcut, this button does it for you.');return;}
+    b.disabled=true;
+    post(b.getAttribute('data-action'),args)
+      .then(function(j){toast(j.message||'Done.',!j.ok);if(j.ok&&j.reload)setTimeout(function(){location.reload();},1200);else b.disabled=false;poll();})
+      .catch(function(){toast('The CoachClaude server has stopped. Open it again from the desktop shortcut.',true);b.disabled=false;});
+  }
+  document.addEventListener('click',function(e){var b=e.target.closest('button.act');if(b)act(b);});
+  document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.matches('.actrow input')){var b=e.target.parentNode.querySelector('button.act');if(b)act(b);}});
+  var pollT,wasBusy=false;
+  function poll(){
+    if(!API)return;clearTimeout(pollT);
+    fetch('/api/ping').then(function(r){return r.json();}).then(function(j){
+      var q=j.jobs||{},busy=!!(q.current||(q.queued||[]).length),el=document.getElementById('jobs');
+      el.className=busy?'on':'';
+      el.innerHTML='';if(busy){el.appendChild(document.createTextNode('Working on '+(q.current||'…')+((q.queued||[]).length?' · queued:':'')));
+        (q.queued||[]).forEach(function(j){var a=document.createElement('a');a.textContent=j.label+' ✕';a.title='Cancel this one';
+          a.onclick=function(){post('cancel',{key:j.key}).then(function(r){toast(r.message,!r.ok);poll();});};el.appendChild(a);});}
+      if(wasBusy&&!busy){toast((q.log||[]).slice(-1)[0]||'Done.');setTimeout(function(){location.reload();},1500);}
+      wasBusy=busy;pollT=setTimeout(poll,busy?5000:60000);
+    }).catch(function(){pollT=setTimeout(poll,60000);});
+  }
+  poll();
 })();
 """
 
@@ -349,7 +422,7 @@ def render(tree: dict) -> str:
     for pg in tree.get("pages") or []:
         nav.append(f'<a href="#{e(pg["id"])}" data-page="{e(pg["id"])}" class="top">{e(pg.get("nav") or pg["title"])}</a>')
         pages.append(f'<section class="page" id="p-{e(pg["id"])}"><h1>{e(pg["title"])}</h1>'
-                     + (f'<p class="sub">{pg["intro"]}</p>' if pg.get("intro") else "")
+                     + (f'<p class="sub">{pg["intro"]}</p>' if pg.get("intro") else "") + actions_html(pg.get("actions"))
                      + f'<div class="md">{md(pg.get("md")) or "<p class=warn>Nothing here yet.</p>"}</div></section>')
     days = [d for d in tree["days"] if d["sessions"] or d.get("combined")]
     for i, day in enumerate(days):
@@ -369,7 +442,7 @@ def render(tree: dict) -> str:
         nav.append(f'<a href="{e(tree["other"]["href"])}" class="other">{e(tree["other"]["title"])} →</a>')
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>{e(tree["title"])}</title><style>{CSS}</style></head><body>'
-            f'<nav>{"".join(nav)}</nav><main>{"".join(pages)}</main><script>{JS}</script></body></html>')
+            f'<nav>{"".join(nav)}</nav><main>{"".join(pages)}</main><div id="toast"></div><div id="jobs"></div><script>{JS}</script></body></html>')
 
 
 def write(tree: dict, out: Path) -> Path:
