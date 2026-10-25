@@ -928,7 +928,7 @@ def _hots_tree():
         if os.path.exists(os.path.join(sdir, "coaching.md")):
             summary = open(os.path.join(sdir, "coaching.md"), encoding="utf-8").read()
         s = {"id": slug(date), "label": date, "date": date, "kind": "session", "games": [], "tables": [],
-             "title": f"Session {date}", "summary_md": summary, "nav_label": f"session {date}",
+             "title": f"Session {date}", "summary_md": summary,
              "sub": f'<a href="{rel(sdir)}" target="_blank">folder</a>'}
         for gname in sorted(d for d in os.listdir(sdir) if os.path.isdir(os.path.join(sdir, d))):
             gdir = os.path.join(sdir, gname)
@@ -940,7 +940,7 @@ def _hots_tree():
             coached = os.path.exists(os.path.join(gdir, "coaching.md"))
             played = gname[:16].replace(".", ":")
             gid = f"{s['id']}--{slug(gname)}"
-            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}",
+            g = {"id": gid, "dir": gname, "title": f"{m['map']} · {res.capitalize()} · {m['hero']}", "nav": f"{m['map']} · {m['hero']}",
                  "result": res, "coached": coached, "processed": True,
                  "sub": f"{played} · {fmt(m['length'])} · replay {an.get('replay', '')} · " + f'<a href="{rel(gdir)}" target="_blank">folder</a>',
                  "cells": {"played": played, "map": {"text": m["map"], "href": f"#g/{gid}"},
@@ -988,7 +988,6 @@ def _hots_tree():
                                      "pre": open(tl, encoding="utf-8").read()})
             s["games"].append(g)
         n = len(s["games"])
-        s["nav"] = f"{date} · {n} game{'s' if n != 1 else ''}" + (" · summary" if summary else "")
         covering = [("Session log", e["text"]) for e in log
                     if any(e["start"] <= d <= e["end"] for d in {date} | {g["dir"][:10] for g in s["games"]})]
         if covering:
