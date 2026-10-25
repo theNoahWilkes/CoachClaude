@@ -59,6 +59,20 @@ _Avoid_: focus options, focus menu
 The start of coaching, where the coach names the focus it will grade and, if there is a focus
 proposal, offers that one alternative. Keeping the current focus is the default.
 
+**Moment**:
+A point in a match worth the player's attention: a teachable moment, a bad death, a particularly
+bad decision, or a standout good play. The session summary picks about five per session, each
+with its clip; the rest of what happened is not coached.
+_Avoid_: highlight, event (for a coached moment)
+
+**Focus test**:
+A window in a match where the current focus could be tested, such as a low-HP episode for a
+focus about walls. The pipeline lists them from facts; the coach judges each one.
+
+**Stoplight**:
+The one-word focus grade a match report gives each focus: green, amber, red, or not tested.
+The reasons are in the session summary.
+
 **Match log**:
 The objective record of every match: result, map, hero, score, rank movement and any other stat
 that can be extracted for free from the recording or replay. It is the primary record and must
