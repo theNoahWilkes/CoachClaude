@@ -21,8 +21,7 @@ quiet match.
 - A death chain (listed per match) is one moment, told from its first death: list its deaths
   together, e.g. "m03 d03+d04". The first death is usually the decision; the rest is what it cost.
 - A good play has no death to anchor it: cite its clock (a fight won at 2v5 with the player
-  alive, an ult that turned a fight, a low-HP episode survived with the escape held, a save from
-  the Saves list).
+  alive, an ult that turned a fight, a low-HP episode survived with the escape held).
 - A death that breaks the current focus or a recurring pattern is a strong pick even when the
   pattern is already in the lessons file: the repeat is what the player most needs to see. An
   escape that was ready, or a prompt that was on screen, and not used is the clearest kind.

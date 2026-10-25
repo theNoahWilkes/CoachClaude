@@ -101,7 +101,7 @@ two deaths, the overview cells of its focus tests, the ults, or the writer.
 
 **Digest**:
 A session as text, `<session>/digest.md`: every match's death facts blocks, death chains, ults,
-fights, saves and focus tests. Written free by `owcoach digest`; the triage's only input.
+fights and focus tests. Written free by `owcoach digest`; the triage's only input.
 
 **Triage**:
 The piece that reads the digest, before any image is read, and shortlists the moments the

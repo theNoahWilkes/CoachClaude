@@ -110,7 +110,7 @@ NOTES = [
     "Ult state is ready / not ready only (no charge %); 'used' means the ready icon went away while alive.",
     "Death flags: first_down = 5v5 just before (no teammate down yet), team_ahead / team_behind / even_fight compare the counts; short_life = died within 20 s of respawning; repeat_killer = 3+ deaths to that player. Flags are leads, not verdicts.",
     "focus_tests (owcoach/moments.py): every window where a focus could be tested, in time order: kind low = a low-HP episode, down_two = the team down two or more while the player is alive (from the alive counter), respawn = the 20 s after a respawn; each with from / to, what, and the death it ended in if any. Which kinds test the current focus is matched from its wording when the digest is written. chains = runs of deaths where each came within 20 s of respawning from the one before (one decision and its consequence).",
-    "saves (owcoach/saves.py): every 'SAVED <ally>' notice under the crosshair, read locally from the screen: t / clock = when it appeared, by = true for 'SAVED BY <ally>' (a teammate saved the player). Who was saved is not read. Two saves within ~3 s count once.",
+    "saves (owcoach/saves.py): every 'SAVED <ally>' notice under the crosshair, read locally from the screen: t / clock = when it appeared, by = true for 'SAVED BY <ally>' (a teammate saved the player). Who was saved is not read. Two saves within ~3 s count once. Routine for a support: a save is a moment only when it turned a fight.",
     "Objective numbers: control capture %, push / competitive escort distance in metres; quick-play escort progress isn't read.",
 ]
 
@@ -465,7 +465,7 @@ def build_packet(cache: Path, gdir: Path, m: dict, ev: dict, t: np.ndarray, own:
         "images": {n.split(".")[0]: n for n in ("scoreboard_final.jpg", "summary.jpg", "rank.jpg")
                    if (pdir / n).exists()},
         "heroes": heroes,
-        "counts": {"deaths": len(deaths), "final_blows": len(fbs), "ults": len(ult_recs),
+        "counts": {"deaths": len(deaths), "final_blows": len(fbs), "ults": len(ult_recs), "saves": len(saved or []),
                    "ults_used": sum(u["outcome"] == "used" for u in ult_recs),
                    "deaths_per_10min": round(len(deaths) / max(1.0, (m["end"] - m["start"]) / 600), 1),
                    "time_dead_s": round(sum(d["respawned"]["t"] - d["t"] for d in deaths if d["respawned"]), 1),

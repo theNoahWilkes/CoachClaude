@@ -366,7 +366,7 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   "on respawn"), so an action like "back off to the last wall toward your spawn" doesn't pull in
   low-HP and respawn windows. A focus whose wording names no kind gets every kind.
 - `owcoach digest SESSION` writes `<session>/digest.md`: per match, every death's facts block,
-  the chains, ults, fights, saves, final blows and the focus tests per focus, every line prefixed with
+  the chains, ults, fights, final blows and the focus tests per focus, every line prefixed with
   the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
   ~19k tokens.
 
@@ -389,8 +389,10 @@ extra roiscan pass took 65 s with CUDA. At the 534 px thumbnail
 scale the word is ~8 px and PROTECTED BY scores as high as a faint SAVED, hence the native crop.
 Not read: who was saved. Two saves within a notice's life count once.
 
-`packet.json` → `saves`: [{t, clock, video_t, by}]. The digest lists them, so the triage can pick
-a save as a good play without any image being read.
+`packet.json` → `saves`: [{t, clock, video_t, by}] and `counts.saves`; the match page shows the
+count and per 10 under the stats. Saves are routine for a support (38 in one session), so the
+digest only counts them: a save is worth a moment when it turned a fight, and the pipeline doesn't
+know fight outcomes yet (#39).
 
 ### The yardstick (`yardstick.py`, `owcoach yardstick`)
 
