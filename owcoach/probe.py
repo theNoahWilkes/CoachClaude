@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import os
 import shutil
@@ -46,11 +47,21 @@ def cuda_decode_ok(video: Path) -> bool:
     return r.returncode == 0
 
 
+@functools.cache
+def nvenc_ok() -> bool:
+    """True if this ffmpeg can encode 10-bit HEVC on an NVIDIA GPU (one blank frame, discarded)."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
+                        "-f", "lavfi", "-i", "color=black:s=3456x1440", "-frames:v", "1",
+                        "-pix_fmt", "p010le", "-c:v", "hevc_nvenc", "-profile:v", "main10", "-f", "null", "-"],
+                       capture_output=True)
+    return r.returncode == 0
+
+
 def probe(video: Path) -> dict:
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
          "-show_entries",
-         "stream=codec_name,width,height,avg_frame_rate,r_frame_rate,bit_rate,pix_fmt,color_transfer,color_primaries:format=duration,size",
+         "stream=codec_name,width,height,avg_frame_rate,r_frame_rate,bit_rate,pix_fmt,color_transfer,color_primaries,color_space,color_range:format=duration,size",
          "-of", "json", str(video)],
         check=True, capture_output=True, text=True).stdout
     j = json.loads(out)
@@ -69,6 +80,9 @@ def probe(video: Path) -> dict:
         "pix_fmt": s.get("pix_fmt"),
         "hdr": s.get("color_transfer") in ("smpte2084", "arib-std-b67"),
         "color_transfer": s.get("color_transfer"),
+        "color_primaries": s.get("color_primaries"),
+        "color_space": s.get("color_space"),
+        "color_range": s.get("color_range"),
         "vfr": abs(rate(s["avg_frame_rate"]) - rate(s["r_frame_rate"])) > 0.5,
         "duration": float(f.get("duration", 0)),
         "size": int(f.get("size", 0)),
