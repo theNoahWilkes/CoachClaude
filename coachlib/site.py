@@ -5,10 +5,11 @@ collect_hots) decides the content and hands over this shape:
 
   tree:    app, player, title, generated, version, columns [{key, label, align?}], days [...], pages [...],
            tables [...] (home extras), notes [str], other {title, href} | None, banner (md) | None
-  day:     date, sessions [session], combined [session]        (combined = a summary over sessions)
+  day:     date (YYYY-MM-DD), sessions [session], combined [session]   (combined = a summary over sessions)
   session: id, label, date, kind ("session" | "combined"), sub (html), games [game], summary_md,
            tables [table], warn (str)
-  game:    id, title, sub (html), result (class suffix), coached, processed, cells {key: str | {text, cls}},
+  game:    id, title, nav (sidebar text, without the result) | None, sub (html), result (class suffix),
+           coached, processed, cells {key: str | {text, cls}},
            warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
            links [{label, href}], report_md (+ report_title), notes_md (+ notes_title: a second text
            block, e.g. what the lessons file says about this game), moments [moment], details [detail]
@@ -20,6 +21,11 @@ collect_hots) decides the content and hands over this shape:
   detail:  summary, md | pre | html
   page:    id, title, nav, intro (html) | None, md
 
+The sidebar lists one row per day, which is one session in the glossary's sense (one sitting):
+its date and win-loss record, with that day's matches under it. The day row opens a day page
+with every summary of the day; the collector's sessions and combined summaries are not sidebar
+rows of their own. The newest day starts open, older days start folded.
+
 Images and clips stay as relative links from the page's folder; nothing is copied. Needs
 markdown-it-py for the markdown bodies.
 """
@@ -27,6 +33,7 @@ from __future__ import annotations
 
 import html
 import re
+from datetime import date as _date
 from pathlib import Path
 
 
@@ -152,9 +159,9 @@ def _moment(g: dict, m: dict) -> str:
     return "".join(out)
 
 
-def _game(tree: dict, g: dict, s: dict, prev: dict | None, nxt: dict | None) -> str:
+def _game(tree: dict, g: dict, day: dict, prev: dict | None, nxt: dict | None) -> str:
     nav = ('<div class="pn">' + (f'<a href="#g/{e(prev["id"])}">← {e(prev["title"])}</a>' if prev else "<span></span>")
-           + f'<a href="#s/{e(s["id"])}">{e(s.get("nav_label") or ("session " + s["label"]))}</a>'
+           + f'<a href="#d/{e(day["id"])}">{e(day["long"])}</a>'
            + (f'<a href="#g/{e(nxt["id"])}">{e(nxt["title"])} →</a>' if nxt else "<span></span>") + "</div>")
     out = [nav, f'<h1>{e(g["title"])}</h1>']
     if g.get("sub"):
@@ -183,21 +190,52 @@ def _game(tree: dict, g: dict, s: dict, prev: dict | None, nxt: dict | None) -> 
     return "".join(out)
 
 
-def _session(tree: dict, s: dict, day: dict) -> str:
-    out = [f'<h1>{e(s.get("title") or s["label"])}</h1>']
-    if s.get("sub"):
-        out.append(f'<p class="sub">{s["sub"]}</p>')
-    games = s["games"] if s["kind"] != "combined" else [g for x in day["sessions"] for g in x["games"]]
+def day_label(d: str, long: bool = False, this_year: int | None = None) -> str:
+    """'2026-10-25' -> 'Sun 25 Oct' (or 'Sunday 25 October 2026'); the year shows on short labels only when it isn't this year."""
+    try:
+        dt = _date.fromisoformat(d)
+    except (TypeError, ValueError):
+        return str(d)
+    if long:
+        return f"{dt:%A} {dt.day} {dt:%B %Y}"
+    return f"{dt:%a} {dt.day} {dt:%b}" + ("" if dt.year == (this_year or _date.today().year) else f" {dt.year}")
+
+
+def record(games: list[dict]) -> str:
+    """Win-loss over the games, e.g. '3–1' or '2–2–1' with draws."""
+    res = [(g.get("result") or "").lower() for g in games]
+    w = sum(r in ("win", "victory") for r in res)
+    l = sum(r in ("loss", "defeat") for r in res)
+    d = sum(r == "draw" for r in res)
+    if not (w or l or d):
+        return ""
+    return f"{w}–{l}" + (f"–{d}" if d else "")
+
+
+def _day(tree: dict, day: dict) -> str:
+    """One page per day: every match of the day, then each summary the day has (combined first)."""
+    parts = list(day.get("combined") or []) + list(day["sessions"])
+    games = [g for s in day["sessions"] for g in s["games"]]
+    out = [f'<h1>{e(day["long"])}</h1>']
+    rec = record(games)
+    subs = [s["sub"] if len(parts) == 1 else f'{e(s["label"])} {s["sub"]}' for s in parts if s.get("sub")]
+    head = " · ".join(x for x in (f"{len(games)} match{'es' if len(games) != 1 else ''}" if games else "", rec) if x)
+    out.append(f'<p class="sub">{" · ".join(x for x in [head] + subs if x)}</p>')
     if games:
         out.append(games_table(tree, games))
-    if s.get("summary_md"):
-        out.append(f'<h2>{e(s.get("summary_title") or "Session summary")}</h2><div class="md">{md(s["summary_md"])}</div>')
-    elif s.get("warn"):
-        out.append(f'<p class="warn">{e(s["warn"])}</p>')
-    if s.get("notes_md"):
-        out.append(f'<h2>{e(s.get("notes_title") or "Notes")}</h2><div class="md notes">{md(s["notes_md"])}</div>')
-    for t in s.get("tables") or []:
-        out.append(table_html(t))
+    summaries = [s for s in parts if s.get("summary_md")]
+    for s in parts:
+        if s.get("summary_md"):
+            name = e(s.get("summary_title") or "Session summary")
+            out.append(f'<h2>{name if len(summaries) == 1 else name + " · " + e(s["label"])}</h2><div class="md">{md(s["summary_md"])}</div>')
+        if s.get("notes_md"):
+            out.append(f'<h2>{e(s.get("notes_title") or "Notes")}</h2><div class="md notes">{md(s["notes_md"])}</div>')
+        for t in s.get("tables") or []:
+            out.append(table_html(t))
+    if not summaries and len(games) > 1:
+        warn = next((s["warn"] for s in parts if s.get("warn")), None)
+        if warn:
+            out.append(f'<p class="warn">{e(warn)}</p>')
     return "".join(out)
 
 
@@ -226,8 +264,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Sego
 nav{background:var(--panel);border-right:1px solid var(--line);padding:12px 0;position:sticky;top:0;height:100vh;overflow:auto;font-size:14px}
 nav a{color:var(--ink);text-decoration:none;display:block;padding:3px 14px;border-left:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav a:hover{background:#242830}nav a.cur{border-left-color:var(--acc);background:#262a32}
-nav .day{color:var(--dim);font-weight:600;padding:10px 14px 2px;text-transform:uppercase;font-size:12px;letter-spacing:.04em}
-nav .sess{padding-left:22px;color:var(--dim)}nav .game{padding-left:34px}nav .top{font-weight:600}nav .other{color:var(--dim);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+nav details.day{margin-top:6px}nav summary{list-style:none;display:flex;align-items:center;cursor:pointer;padding-left:4px}nav summary::-webkit-details-marker{display:none}
+nav summary::before{content:"▸";color:var(--dim);width:12px;flex:0 0 12px;font-size:11px}nav details[open]>summary::before{content:"▾"}
+nav summary a{flex:1;font-weight:600;padding-left:6px;display:flex;justify-content:space-between}nav .rec{color:var(--dim);font-weight:400;font-variant-numeric:tabular-nums}
+nav .game{padding-left:34px}nav .top{font-weight:600}nav .other{color:var(--dim);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 nav .res-victory::before,nav .res-win::before{content:"W ";color:var(--green)}nav .res-defeat::before,nav .res-loss::before{content:"L ";color:var(--red)}nav .res-draw::before{content:"D ";color:var(--dim)}
 nav .nc{opacity:.55}
 main{padding:20px 36px 80px;max-width:1300px;min-width:0}
@@ -273,7 +313,8 @@ JS = """
     var h=location.hash.slice(1)||'home',id='p-'+h.replace(/\\//g,'--'),hit=false;
     pages.forEach(function(p){var on=p.id===id;p.classList.toggle('cur',on);hit=hit||on;});
     if(!hit){pages.forEach(function(p){p.classList.toggle('cur',p.id==='p-home');});h='home';}
-    links.forEach(function(a){var on=a.getAttribute('data-page')===h;a.classList.toggle('cur',on);if(on)a.scrollIntoView({block:'nearest'});});
+    links.forEach(function(a){var on=a.getAttribute('data-page')===h;a.classList.toggle('cur',on);
+      if(on){var d=a.closest('details');if(d)d.open=true;a.scrollIntoView({block:'nearest'});}});
     window.scrollTo(0,0);
   }
   window.addEventListener('hashchange',show);show();
@@ -298,20 +339,20 @@ def render(tree: dict) -> str:
         pages.append(f'<section class="page" id="p-{e(pg["id"])}"><h1>{e(pg["title"])}</h1>'
                      + (f'<p class="sub">{pg["intro"]}</p>' if pg.get("intro") else "")
                      + f'<div class="md">{md(pg.get("md")) or "<p class=warn>Nothing here yet.</p>"}</div></section>')
-    for day in tree["days"]:
-        nav.append(f'<div class="day">{e(day["date"])}</div>')
-        for s in day.get("combined") or []:
-            nav.append(f'<a href="#s/{e(s["id"])}" data-page="s/{e(s["id"])}" class="sess">{e(s.get("nav") or s["label"])}</a>')
-            pages.append(f'<section class="page" id="p-s--{e(s["id"])}">{_session(tree, s, day)}</section>')
-        for s in day["sessions"]:
-            nav.append(f'<a href="#s/{e(s["id"])}" data-page="s/{e(s["id"])}" class="sess">{e(s.get("nav") or s["label"])}</a>')
-            pages.append(f'<section class="page" id="p-s--{e(s["id"])}">{_session(tree, s, day)}</section>')
-            n = len(s["games"])
-            for i, g in enumerate(s["games"]):
-                cls = "game res-" + e(g.get("result") or "none") + ("" if g.get("coached") else " nc")
-                nav.append(f'<a href="#g/{e(g["id"])}" data-page="g/{e(g["id"])}" class="{cls}" title="{e(g.get("dir") or g["title"])}">{e(g["title"])}</a>')
-                pages.append(f'<section class="page" id="p-g--{e(g["id"])}">'
-                             f'{_game(tree, g, s, s["games"][i - 1] if i else None, s["games"][i + 1] if i + 1 < n else None)}</section>')
+    days = [d for d in tree["days"] if d["sessions"] or d.get("combined")]
+    for i, day in enumerate(days):
+        day = dict(day, id=slug(day["date"]), long=day_label(day["date"], long=True))
+        games = [g for s in day["sessions"] for g in s["games"]]
+        rec = record(games)
+        nav.append(f'<details class="day"{" open" if i == 0 else ""}><summary><a href="#d/{e(day["id"])}" data-page="d/{e(day["id"])}">'
+                   f'{e(day_label(day["date"]))}' + (f'<span class="rec">{e(rec)}</span>' if rec else "") + "</a></summary>")
+        pages.append(f'<section class="page" id="p-d--{e(day["id"])}">{_day(tree, day)}</section>')
+        for j, g in enumerate(games):
+            cls = "game res-" + e(g.get("result") or "none") + ("" if g.get("coached") else " nc")
+            nav.append(f'<a href="#g/{e(g["id"])}" data-page="g/{e(g["id"])}" class="{cls}" title="{e(g["title"])}">{e(g.get("nav") or g["title"])}</a>')
+            pages.append(f'<section class="page" id="p-g--{e(g["id"])}">'
+                         f'{_game(tree, g, day, games[j - 1] if j else None, games[j + 1] if j + 1 < len(games) else None)}</section>')
+        nav.append("</details>")
     if tree.get("other"):
         nav.append(f'<a href="{e(tree["other"]["href"])}" class="other">{e(tree["other"]["title"])} →</a>')
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
