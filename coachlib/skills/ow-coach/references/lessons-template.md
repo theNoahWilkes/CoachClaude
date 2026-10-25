@@ -6,7 +6,7 @@ Kept by the ow-coach skill. Short on purpose: merge, don't append.
 <!-- the player's choice, applied by `owcoach focus` from the coach's proposal; the coach adds
 grades per game under each and never changes the wording:
 - **Under half HP, break line of sight before re-peeking.** Chosen 2026-10-13 from the focus proposal.
-  Grades: 2026-10-14 Lijiang: Improved (2/2: 2:10, 5:40); 2026-10-14 Busan: Not improved (0/1: d06) -->
+  Grades: 2026-10-14 Lijiang: green (2/2: 2:10, 5:40); 2026-10-14 Busan: red (0/1: d06) -->
 
 ## Focus options
 <!-- proposed by the coach, not chosen; written by `owcoach focus`, with the evidence kept -->

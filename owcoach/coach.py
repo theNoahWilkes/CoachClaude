@@ -148,10 +148,10 @@ def _finish(p: subprocess.Popen) -> float:
 def summary_prompt(sessions: list[Path], out: Path) -> str:
     where = (f"session {sessions[0]}" if len(sessions) == 1
              else "these sessions, played the same evening and summarised together: " + ", ".join(str(s) for s in sessions))
-    return f"""Use the ow-coach skill. Every game of {where} has already been coached by a separate process: each game folder has packet/coaching.md and packet/notes/summary.md (the summary ends with a '## Lessons' section of what that game's writer would change in the lessons file). Do the session part only:
-1. Read each game's packet/notes/summary.md and {out}/trend.json. Don't re-read the game reports, notes or stills, and don't launch readers or writers.
-2. Write the session summary to {out}/coaching.md (skill section 4, 'For a multi-game session'). Name every game's folder in it.
-3. Update the lessons file (skill section 5) from the games' '## Lessons' sections: if this session already has entries in it, replace them rather than adding to them, so nothing is counted twice. Add grades under the current focus; do NOT change its wording.
+    return f"""Use the ow-coach skill. Every match of {where} has already been coached by a separate process: each match folder has packet/coaching.md and packet/notes/summary.md (its focus tests and moment nominations, ending with a '## Lessons' section of what that match's writer would change in the lessons file). Do the session part only:
+1. Read each match's packet/notes/summary.md and {out}/trend.json. Don't re-read the match reports, notes or stills, and don't launch readers or writers.
+2. Write the session summary to {out}/coaching.md (skill section 4, 'The session summary'): about five moments picked from the matches' nominations, the focus in plain words from their focus tests. Cite every moment and test by its match folder's prefix and clock (m03 5:18) or death id (m03 d04).
+3. Update the lessons file (skill section 5) from the matches' '## Lessons' sections: if this session already has entries in it, replace them rather than adding to them, so nothing is counted twice. Add grades under the current focus; do NOT change its wording.
 4. Write the focus proposal to the profile's focus_proposal.md (skill section 5 and references/focus-proposal.md). Nobody is at the keyboard: don't ask, don't run owcoach focus; say in chat and at the end of {out}/coaching.md that the proposal is waiting for 'owcoach focus'.
 5. Give the short version in chat.
 Shell commands other than python will be denied."""

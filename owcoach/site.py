@@ -31,7 +31,13 @@ COLUMNS = [{"key": "played", "label": "played", "align": "left"}, {"key": "map",
            {"key": "mode", "label": "mode", "align": "left"}, {"key": "result", "label": "result", "align": "left"},
            {"key": "hero", "label": "hero", "align": "left"}, {"key": "clock", "label": "clock"},
            {"key": "deaths", "label": "deaths"}, {"key": "d10", "label": "D/10"}, {"key": "dead_pct", "label": "dead %"},
-           {"key": "h10", "label": "heal/10"}, {"key": "dmg10", "label": "dmg/10"}, {"key": "coached", "label": "coached"}]
+           {"key": "h10", "label": "heal/10"}, {"key": "dmg10", "label": "dmg/10"}, {"key": "focus", "label": "focus"},
+           {"key": "coached", "label": "coached"}]
+STOPLIGHT_RE = re.compile(r"^\s*[-*]\s*(🟢|🟡|🔴|⚪)", re.M)     # a report's "## Focus" lines (ADR 0012)
+# A clock (5:18) or a moment id (d04, u02, k07) in a report, optionally after a match (m03) in a
+# session summary. Not inside a link's text or target, not part of a longer word or time.
+MOMENT_RE = re.compile(r"(?<![\w\[/#@:.])(?:(m\d{2}) )?(?:([duk]\d{2})|(\d{1,2}:\d{2}))(?![\w\]:])")
+LEAD_S = {"d": 10.0, "u": 5.0, "k": 5.0, "clock": 3.0}      # seconds of lead-in before a linked moment
 
 
 def _read(p: Path) -> str | None:
@@ -73,6 +79,57 @@ def _stills(packet_url: str, frames: list[dict]) -> list[dict]:
     """The sampled stills, not the 0.1 s extras (those stay one click away in the folder)."""
     return [{"src": f"{packet_url}/{quote(f['file'])}", "label": f"{f['dt']:+.1f}", "title": f"{f['kind']} {f['dt']:+.1f} s"}
             for f in frames if not f.get("extra")]
+
+
+def _clip_index(pk: dict) -> dict:
+    """What a report's text can link to in this match's clip: video_t per moment id, and the
+    offset from the game clock to the video (constant within a match)."""
+    ids: dict[str, float] = {}
+    offs = []
+    for d in pk.get("deaths") or []:
+        if d.get("video_t") is not None:
+            ids[d["id"]] = d["video_t"]; offs.append(d["video_t"] - d["t"])
+    for k in pk.get("final_blows") or []:
+        if k.get("video_t") is not None:
+            ids[k["id"]] = k["video_t"]; offs.append(k["video_t"] - k["t"])
+    for u in pk.get("ults") or []:
+        at = u.get("used") or u.get("ready") or {}
+        if at.get("video_t") is not None:
+            ids[u["id"]] = at["video_t"]; offs.append(at["video_t"] - at["t"])
+    return {"ids": ids, "offset": offs[0] if offs else 0.0, "duration": (pk.get("game") or {}).get("duration_s") or 0}
+
+
+def link_moments(text: str | None, games: dict[str | None, dict]) -> str | None:
+    """Turn the clocks and moment ids in a report into clip links (`#g/<game id>@<s>`).
+    `games` maps a match prefix ("m03") to {"id": game id, **_clip_index}; the key None is the
+    match a bare clock belongs to (a match report), absent in a session summary."""
+    if not text:
+        return text
+
+    def sub(m: re.Match) -> str:
+        g = games.get(m.group(1)) if m.group(1) else games.get(None)
+        if not g:
+            return m.group(0)
+        if m.group(2):
+            vt = g["ids"].get(m.group(2))
+            if vt is None:
+                return m.group(0)
+            vt -= LEAD_S[m.group(2)[0]]
+        else:
+            mm, ss = m.group(3).split(":")
+            t = int(mm) * 60 + int(ss)
+            if int(ss) > 59 or (g["duration"] and t > g["duration"] + 30):
+                return m.group(0)
+            vt = t + g["offset"] - LEAD_S["clock"]
+        return f"[{m.group(0)}](#g/{g['id']}@{max(0.0, vt):.1f})"
+
+    # leave code spans alone
+    return "".join(part if part.startswith("`") else MOMENT_RE.sub(sub, part) for part in re.split(r"(`[^`\n]*`)", text))
+
+
+def stoplights(report: str | None) -> str:
+    """The stoplight per focus from a report's Focus section, e.g. '🟢🟡'."""
+    return "".join(STOPLIGHT_RE.findall(report or ""))
 
 
 def _stats_table(m: dict) -> dict:
@@ -173,7 +230,10 @@ def _game(gdir: Path, session: dict) -> dict:
         "deaths": [{"id": d["id"], "t": d["t"], "to": (d.get("respawned") or {}).get("t"), "label": f"{d['id']} death {d['clock']}"}
                    for d in pk.get("deaths") or []],
     }
-    g["report_md"] = _read(pk_dir / "coaching.md")
+    g["clips"] = _clip_index(pk)
+    report = _read(pk_dir / "coaching.md")
+    g["cells"]["focus"] = stoplights(report)
+    g["report_md"] = link_moments(report, {None: {"id": g["id"], **g["clips"]}}) if g.get("video") else report
     if not g["report_md"]:
         g["warnings"].append("Not coached yet. <code>owcoach coach</code> writes the report.")
     purl = _rel(pk_dir)
@@ -255,6 +315,8 @@ def _session(sdir: Path) -> dict | None:
                 s["games"].append(_game(gdir, s))
         if not summary and s["games"]:
             s["warn"] = "No session summary."
+        clips = {gd["dir"][:3]: {"id": gd["id"], **gd["clips"]} for gd in s["games"] if gd.get("clips") and gd.get("video")}
+        s["summary_md"] = link_moments(summary, clips)
     if (t := _trend_table(_json(sdir / "trend.json"))):
         s["tables"].append(t)
     return s

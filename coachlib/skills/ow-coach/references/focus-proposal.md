@@ -46,7 +46,7 @@ Rules:
 - Option 1 is always "keep", with the current wording verbatim (both bullets if the focus has two)
   and everything the lessons file holds under it (grades so far, per game), so that picking it
   loses nothing: `owcoach focus` replaces the whole section with the chosen options.
-- Two to four more options, from the recurring patterns, the session's habits, and the "Focus
+- Two to four more options, from the recurring patterns, the session's moments, and the "Focus
   options" already in the lessons file. Each is one habit with a trigger the player can notice in
   the moment and an action; not "position better".
 - The first line under each heading is the bold wording and nothing else. That's what the

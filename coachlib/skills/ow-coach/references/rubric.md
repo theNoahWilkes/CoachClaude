@@ -89,7 +89,8 @@ Don't turn every death into an individual error, and don't claim execution from 
 
 ## Focus grade
 
-Grade the current focus from the list of situations that tested it, not from an overall feel.
+Each match report gives each focus a **stoplight**: green, amber, red or not tested. Grade it
+from the list of situations that tested it, not from an overall feel.
 Two runs on the same game gave different grades (Havana, 2026-10-15), so use this test:
 
 1. List every test. That's each situation where the focus's trigger happened, in the deaths and in
@@ -99,14 +100,17 @@ Two runs on the same game gave different grades (Havana, 2026-10-15), so use thi
    locally; use them as the list, and the readers' notes for what the stills add (cover, who was
    there).
 2. Grade by the count:
-   - **Not tested:** no tests.
-   - **Improved:** held in at least 3 of 4 tests, and no avoidable death was caused by breaking it.
-   - **Not improved:** held in fewer than half the tests, or breaking it caused 3 or more avoidable deaths.
-   - **Mixed:** anything in between.
-3. Write the count with the grade, e.g. "Mixed (6 of 11 held)".
+   - ⚪ **Not tested:** no tests.
+   - 🟢 **Green:** held in at least 3 of 4 tests, and no avoidable death was caused by breaking it.
+   - 🔴 **Red:** held in fewer than half the tests, or breaking it caused 3 or more avoidable deaths.
+   - 🟡 **Amber:** anything in between.
+3. Write the count with the stoplight, e.g. "🟡 held 6 of 11".
 
 A focus can have parts (e.g. "use the escape" and "with the escape down, stay in cover"). Then
-grade each part with its own count, and give the focus the lower of the two grades.
+count each part on its own, and give the focus the lower of the two stoplights.
+
+The stoplight is the match report's whole say on the focus. What the tests showed, in plain
+words, is the session summary's (SKILL.md section 4).
 
 ## Overview sheets
 
@@ -114,7 +118,7 @@ The cells are thumbnails every 5 s (2.5 s with the extra sheets); read team shap
 - **Where the player stands while alive:** with the tank, on an off-angle, or alone. Compare it
   with where they stood just before their deaths.
 - **Fights won without a death**, and what the player did in them. These are the behaviours to
-  keep and to cite under "What went well".
+  keep; a standout one is a moment worth nominating.
 - **Situations that test the current focus** whether or not they ended in a death.
 - **Time between respawn and rejoining** (DEAD runs, then the first alive cells): walking in
   alone, or waiting for the team.
