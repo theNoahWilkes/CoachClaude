@@ -108,7 +108,8 @@ template or the rubric; nobody prompts a reader by hand (ADR 0011).
 
 - **The full read** (`owcoach coach --full-read`, dev mode only) skips the triage and reads every
   death, the whole match in 5-minute overview pieces (`overview.md`) and every ult, as before ADR
-  0012. It is the yardstick a triage run is measured against, a paid run done on purpose.
+  0012. It is the yardstick a triage run is measured against, a paid run done on purpose;
+  `owcoach yardstick TRIAGE_COPY FULL_COPY` compares the two for free.
 
 What the writer does, in its own context:
 - Read every notes file of its match: the focus-test (or overview) chunks in order, then the

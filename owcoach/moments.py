@@ -137,9 +137,9 @@ def chains(packet: dict) -> list[dict]:
 
 def triggers(focus: str) -> list[str]:
     """The trigger of each part of a focus: a habit is "when X, do Y", and parts are split by ";".
-    The trigger is the text before the first comma ("When you're under half HP and your escape is
-    on cooldown"; "on respawn")."""
-    return [p.split(",")[0] for p in re.split(r";|\.\s", focus or "") if p.strip()]
+    The trigger is the text before the first comma or colon ("When you're under half HP and your
+    escape is on cooldown"; "on respawn"; "Team down two or more and still in the fight: back off")."""
+    return [re.split(r"[,:]", p)[0] for p in re.split(r";|\.\s", focus or "") if p.strip()]
 
 
 def kinds_for(focus: str) -> list[str]:

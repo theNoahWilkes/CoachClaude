@@ -115,6 +115,11 @@ cost, coached as one moment from its first death.
 Reading every death, the whole match in overview sheets and every ult. Since ADR 0012 a dev-mode
 yardstick for the triage, not how a session is coached.
 
+**Yardstick**:
+A triage run of a session measured against a full read of the same session, and both against the
+player's labels: `owcoach yardstick`, dev mode only. It counts the full read's moments the triage
+run found, dropped or missed.
+
 **Brief**:
 The prompt a piece's process gets: a template from the skill's `briefs/` folder filled in by the
 driver from the packet and the lessons file.
