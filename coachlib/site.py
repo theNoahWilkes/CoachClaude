@@ -25,7 +25,8 @@ collect_hots) decides the content and hands over this shape:
   action:  label, action (name the local server answers), args {} | None, cmd (the same thing as a
            CLI command, copied when the page is opened as a file), title (hover text) | None,
            input (an args key filled from a text box; cmd has {} where the text goes) | None,
-           placeholder | None, text (html before the button) | None, on (bool: a toggle that is on)
+           placeholder | None, text (html before the button) | None, on (bool: a toggle that is on),
+           note (html in italics after the button, which then leads the row) | None
 
 Buttons: an action is a button. Served by coachlib.serve, the page carries a token and a click
 POSTs to /api/<action>; opened as a file, a click copies `cmd` to the clipboard instead.
@@ -157,6 +158,9 @@ def actions_html(acts: list[dict] | None) -> str:
         box = f'<input type="text" placeholder="{e(a.get("placeholder") or "")}">' if a.get("input") else ""
         text = f'<span>{a["text"]}</span>' if a.get("text") else ""
         btn = f'<button {attrs}>{e(a["label"])}</button>' if a.get("action") else ""
+        if a.get("note"):         # button first, the note in italics to its right
+            rows.append(f'<div class="actrow lead">{btn}<em>{a["note"]}</em></div>')
+            continue
         rows.append(f'<div class="actrow">{text}{box}{btn}</div>')
     return f'<div class="acts">{"".join(rows)}</div>' if rows else ""
 
@@ -335,7 +339,7 @@ button.seek{background:#2a3140;color:var(--ink);border:1px solid var(--line);bor
 .strip span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);font-size:11px;padding:0 4px;border-radius:2px}
 details{margin:6px 0}summary{cursor:pointer;color:var(--dim)}pre.facts{white-space:pre-wrap;font-size:12.5px;background:#101214;padding:8px;line-height:1.4}
 .acts{margin:10px 0 14px}.actrow{display:flex;gap:10px;align-items:center;margin:6px 0;max-width:900px}.actrow span{flex:1}
-.dim{color:var(--dim)}.nag{color:var(--acc)}.actrow small{font-size:13px}button.act.on:hover{background:#ffbf5a}#jobs a{margin-left:6px;cursor:pointer}
+.dim{color:var(--dim)}.actrow.lead em{color:var(--dim)}.nag{color:var(--acc)}.actrow small{font-size:13px}button.act.on:hover{background:#ffbf5a}#jobs a{margin-left:6px;cursor:pointer}
 .actrow input{flex:1;background:#101214;color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:4px 8px;font:inherit}
 button.act{background:#3a2f18;color:var(--ink);border:1px solid var(--acc);border-radius:3px;padding:4px 12px;cursor:pointer;font:inherit;font-size:14px;white-space:nowrap}
 button.act:hover{background:#4a3a1c}button.act:disabled{opacity:.5;cursor:wait}button.act.on{background:var(--acc);color:#141619}

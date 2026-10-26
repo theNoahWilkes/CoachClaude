@@ -347,7 +347,7 @@ def day_actions(day: dict) -> list[dict]:
     gb = sum((d / "match.mp4").stat().st_size for d in big) / 1e9
     mins = max(1, round(sum(estimate_min(d) for d in big)))
     n = f"{len(big)} match{'es' if len(big) != 1 else ''}"
-    return [{"text": f"Compressing {n} would take about {mins} min and save {gb * (1 - SIZE_RATIO):.0f} GB.",
+    return [{"note": f"Compressing {n} would take about {mins} min and save {gb * (1 - SIZE_RATIO):.0f} GB.",
              "label": "Compress this day", "action": "compress", "args": {"dirs": [_rel_dir(d) for d in big]},
              "cmd": f"owcoach compress {day['date']}"}]
 
