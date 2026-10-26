@@ -234,9 +234,11 @@ def items() -> list[dict]:
             w = _wording(e)
             if w.lower() not in seen:
                 seen.add(w.lower())
-                out.append({"wording": w, "active": active, "new": False, "note": e[0].split("**", 2)[-1].strip()})
+                also = [m.group(1) for ln in e[1:] if (m := re.fullmatch(r"\s*\*\*(.+?)\*\*\s*", ln))]   # a second habit in the same item
+                out.append({"wording": w, "also": also, "active": active, "new": False, "note": e[0].split("**", 2)[-1].strip()})
     new = [{"wording": o["wording"], "active": False, "new": True, "note": o["title"],
-            "evidence": [ln.strip() for ln in o["body"] if ln.strip()]}
+            "also": [ln.strip().strip("*") for ln in o["body"] if re.fullmatch(r"\s*\*\*(.+?)\*\*\s*", ln)],
+            "evidence": [ln.strip() for ln in o["body"] if ln.strip() and not ln.strip().startswith("**")]}
            for o in _pending() if o["wording"].lower() not in seen]
     return [i for i in out if i["active"]] + new + [i for i in out if not i["active"]]
 

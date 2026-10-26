@@ -368,6 +368,7 @@ def focus_page() -> dict:
         w = html.escape(i["wording"])
         badge = '<span class="flag">new from coaching</span> ' if i["new"] else ""
         ev = "".join(f"<br><small class=dim>{html.escape(x.lstrip('-* '))}</small>" for x in i.get("evidence") or [])
+        w += "".join(f"<br>{html.escape(a)}" for a in i.get("also") or [])
         acts.append({"text": f"{badge}<b>{w}</b>" + (f" <small class=dim>{html.escape(i['note'])}</small>" if i["note"] and not ev else "") + ev,
                      "label": "Active" if i["active"] else "Off", "on": i["active"], "action": "focus",
                      "args": {"wording": i["wording"], "on": not i["active"]},
