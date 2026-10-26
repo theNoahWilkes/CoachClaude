@@ -28,10 +28,11 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from .profile import profile_dir
+from .config import profile_dir
 
 CURRENT = "## Current focus"
 OPTIONS = "## Focus options"
+MAX_ACTIVE = 3          # focus items at once (ADR 0014)
 OPTIONS_NOTE = ("<!-- proposed by the coach, not chosen; evidence kept so the next proposal can "
                 "build on it -->")
 
@@ -127,6 +128,8 @@ def apply(choices: list[int], custom: str | None = None, today: str | None = Non
     if not choices and not custom:
         raise ValueError("pick at least one option number, or --set your own wording")
     chosen = [by_n[n] for n in choices]
+    if len(chosen) + bool(custom) > MAX_ACTIVE:
+        raise ValueError(f"at most {MAX_ACTIVE} focus items at once (one or two work best)")
     if custom:
         chosen.append({"n": 0, "title": "player's own", "wording": custom.strip().rstrip("."), "body": []})
     heads = [f"Chosen {today}" + (f" (option {o['n']} of the proposal: {o['title']})." if o["n"] else ", in the player's own words.")
@@ -159,3 +162,148 @@ def show() -> str:
     else:
         out.append("\nNo proposal pending.")
     return "\n".join(out)
+
+
+# The page's focus list (ADR 0014): every focus item with an active toggle. Active items are the
+# entries under "## Current focus", inactive ones those under "## Focus options", and the
+# pending proposal's options that neither holds yet are shown as new. At most MAX_ACTIVE are
+# active; at MAX_ACTIVE the page suggests cutting down to one or two.
+
+
+def _entries(section: str) -> tuple[list[str], list[list[str]]]:
+    """A section's body -> (lines before the first entry, entries). An entry is a '- **wording**'
+    line at column 0 plus the lines under it; lines inside <!-- --> comments are never entries."""
+    head: list[str] = []
+    entries: list[list[str]] = []
+    in_comment = False
+    for ln in section.split("\n"):
+        starts = not in_comment and ln.startswith("- **")
+        if "<!--" in ln and "-->" not in ln.split("<!--", 1)[1]:
+            in_comment = True
+        elif "-->" in ln:
+            in_comment = False
+        if starts:
+            entries.append([ln])
+        elif entries:
+            entries[-1].append(ln)
+        else:
+            head.append(ln)
+    for e in entries:
+        while e and not e[-1].strip():
+            e.pop()
+    return head, entries
+
+
+def _wording(entry: list[str]) -> str:
+    m = re.match(r"- \*\*(.+?)\*\*", entry[0])
+    return m.group(1).strip() if m else entry[0]
+
+
+def _section_body(text: str, heading: str) -> str:
+    span = _section_span(text, heading)
+    return text[span[0]:span[1]].split("\n", 1)[1].strip("\n") if span else ""
+
+
+def _join(head: list[str], entries: list[list[str]]) -> str:
+    h = "\n".join(head).strip("\n")
+    return "\n".join(x for x in [h] + ["\n".join(e) for e in entries] if x)
+
+
+def _lessons() -> tuple[str, str]:
+    lp = lessons_path()
+    return _read(lp) if lp.exists() else ("# Lessons\n\n", "\n")
+
+
+def _pending() -> list[dict]:
+    pp = proposal_path()
+    if not pp.exists():
+        return []
+    try:
+        return parse_proposal(pp.read_text(encoding="utf-8"))[1]
+    except ValueError:
+        return []
+
+
+def items() -> list[dict]:
+    """Every focus item for the page: {wording, active, new, note}. Active first, then new ones
+    from the coach's pending proposal, then the rest."""
+    text, _ = _lessons()
+    out, seen = [], set()
+    for heading, active in ((CURRENT, True), (OPTIONS, False)):
+        for e in _entries(_section_body(text, heading))[1]:
+            w = _wording(e)
+            if w.lower() not in seen:
+                seen.add(w.lower())
+                also = [m.group(1) for ln in e[1:] if (m := re.fullmatch(r"\s*\*\*(.+?)\*\*\s*", ln))]   # a second habit in the same item
+                out.append({"wording": w, "also": also, "active": active, "new": False, "note": e[0].split("**", 2)[-1].strip()})
+    new = [{"wording": o["wording"], "active": False, "new": True, "note": o["title"],
+            "also": [ln.strip().strip("*") for ln in o["body"] if re.fullmatch(r"\s*\*\*(.+?)\*\*\s*", ln)],
+            "evidence": [ln.strip() for ln in o["body"] if ln.strip() and not ln.strip().startswith("**")]}
+           for o in _pending() if o["wording"].lower() not in seen]
+    return [i for i in out if i["active"]] + new + [i for i in out if not i["active"]]
+
+
+def _write(current: tuple[list[str], list[list[str]]], options: tuple[list[str], list[list[str]]], nl: str, text: str) -> None:
+    text = _set_section(text, CURRENT, _join(*current))
+    text = _set_section(text, OPTIONS, _join(*options) or OPTIONS_NOTE, after=CURRENT)
+    lessons_path().write_text(text.replace("\n", nl), encoding="utf-8")
+    pp = proposal_path()
+    if pp.exists():          # its options are in the lessons file now
+        pp.replace(pp.with_name("focus_proposal.last.md"))
+
+
+def _load(today: str):
+    """The lessons file's two focus sections, with the pending proposal's new options added to
+    "Focus options" (evidence kept). `_write` then retires the proposal: once the player acts on
+    the list, every option is in the lessons file."""
+    text, nl = _lessons()
+    cur = _entries(_section_body(text, CURRENT))
+    opt = _entries(_section_body(text, OPTIONS))
+    if not opt[0] and not opt[1]:
+        opt = ([OPTIONS_NOTE], [])
+    have = {_wording(e).lower() for e in cur[1] + opt[1]}
+    for o in _pending():
+        if o["wording"].lower() not in have:
+            opt[1].append(_entry(o, f"Proposed {today} ({o['title']}).").split("\n"))
+    return text, nl, cur, opt
+
+
+def _restamp(entry: list[str], note: str) -> list[str]:
+    return [f"- **{_wording(entry)}** {note}"] + entry[1:]
+
+
+def set_active(wording: str, on: bool, today: str | None = None) -> str:
+    """Turn one focus item on or off (moving it between "Current focus" and "Focus options")."""
+    today = today or dt.date.today().isoformat()
+    text, nl, cur, opt = _load(today)
+    key = wording.strip().lower()
+    src, dst = (opt, cur) if on else (cur, opt)
+    hit = next((e for e in src[1] if _wording(e).lower() == key), None)
+    if hit is None:
+        if any(_wording(e).lower() == key for e in dst[1]):
+            _write(cur, opt, nl, text)
+            return f"Already {'active' if on else 'off'}."
+        raise ValueError(f"no focus item {wording!r}")
+    if on and len(cur[1]) >= MAX_ACTIVE:
+        raise ValueError(f"{MAX_ACTIVE} focus items are already active. Turn one off first; one or two work best.")
+    src[1].remove(hit)
+    dst[1].append(_restamp(hit, f"Active since {today}." if on else f"Set aside {today}."))
+    _write(cur, opt, nl, text)
+    return f"{'On' if on else 'Off'}: {_wording(hit)}"
+
+
+def add(wording: str, today: str | None = None) -> str:
+    """The player's own focus item, active straight away."""
+    today = today or dt.date.today().isoformat()
+    w = wording.strip().rstrip(".").replace("**", "")
+    if not w:
+        raise ValueError("type the focus first")
+    text, nl, cur, opt = _load(today)
+    if any(_wording(e).lower() == w.lower() for e in cur[1] + opt[1]):
+        _write(cur, opt, nl, text)
+        return set_active(w, True, today)
+    if len(cur[1]) >= MAX_ACTIVE:
+        raise ValueError(f"{MAX_ACTIVE} focus items are already active. Turn one off first; one or two work best.")
+    cur[1].append([f"- **{w}** Added {today}, in the player's own words."])
+    _write(cur, opt, nl, text)
+    return f"Added and on: {w}"

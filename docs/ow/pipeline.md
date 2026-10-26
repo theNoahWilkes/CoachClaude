@@ -25,6 +25,15 @@ the ShadowPlay folder and are read-only input
 `coach` opens it when done (`--no-open` skips that). Every rebuild also refreshes the desktop
 link (`coachlib/launcher.py`).
 
+`owcoach serve` (`owcoach/serve.py` over `coachlib/serve.py`) puts the page on
+`http://127.0.0.1:8765/` so its buttons work ([ADR 0013](../adr/0013-page-acts-through-a-local-server.md)):
+"focus" calls `focus.set_active` / `focus.add` ([ADR 0014](../adr/0014-up-to-three-focus-items.md)),
+"compress" (one button per day) queues `compress.compress` for each of the day's matches. `compress`
+re-encodes an existing `match.mp4` in place with split's NVENC settings: a header-cropped clip
+decodes to the game area already, so it gets no crop filter (`crop W:H:0:0`); the encode
+replaces the clip only when its duration matches, and `clip_video` becomes `crop ... cq 23`.
+`clip_offset` doesn't change, so no timestamps move.
+
 ## Recording facts (measured from Noah's files)
 
 | Property | Value |
@@ -44,7 +53,8 @@ resolution or aspect), the HUD template and pixel ROIs below **must be recalibra
 in 1280-wide, tonemapped, cropped-thumbnail coordinates.
 
 Ask the player before deleting anything in their Videos folder, re-encoding (`split --video
-encode`, below), or changing their ShadowPlay settings.
+encode`, below, or `owcoach compress`), or changing their ShadowPlay settings. A compress the
+player starts from the page is their own ask.
 
 ## Code layout (`owcoach/`, Python 3.10+, deps: numpy, opencv-python, ffmpeg, tesseract)
 

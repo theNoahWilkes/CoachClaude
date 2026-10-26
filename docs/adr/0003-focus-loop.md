@@ -1,5 +1,5 @@
 ---
-status: accepted (not yet implemented; Overwatch uses a proposal menu, HotS edits its own focus)
+status: accepted (not yet implemented; Overwatch uses a proposal menu, HotS edits its own focus). The one-focus rule is superseded by 0014: up to three focus items
 ---
 
 # The focus loop: one focus, a light check-in, an independent pattern finder

@@ -1,5 +1,10 @@
 """The desktop link: one small CoachClaude.html on the player's desktop that opens either game's page.
 
+On Windows, `setup` makes a CoachClaude shortcut instead (`write_shortcut`): it starts the
+local server (`owcoach serve`, see coachlib.serve) with no console window and opens the page
+there, so the page's buttons work. The server stops itself when the page has been closed a
+while.
+
 The pages stay where each coach writes them (the Overwatch page has to sit at the library root,
 because its stills and clips are relative links). This file only points at them. `setup` creates
 it; every rebuild of a page rewrites it if it is still there, so a game played for the first time
@@ -17,13 +22,20 @@ from . import config
 from .site import e
 
 LINK_NAME = "CoachClaude.html"
+SHORTCUT_NAME = "CoachClaude.lnk"
 PAGE_NAME = "coaching.html"
+
+
+def _dirs() -> tuple[Path, Path]:
+    """Where each coach writes its page: the Overwatch library, the HotS data folder."""
+    ow = Path(os.environ.get("OWCOACH_LIBRARY") or config.section("ow").get("library") or Path.home() / "Videos" / "owcoach")
+    hots = Path(os.environ.get("HOTSCOACH_DATA") or config.data_dir("hots"))
+    return ow, hots
 
 
 def pages() -> list[tuple[str, Path]]:
     """(title, path) for every game page that exists, Overwatch first."""
-    ow = Path(os.environ.get("OWCOACH_LIBRARY") or config.section("ow").get("library") or Path.home() / "Videos" / "owcoach")
-    hots = Path(os.environ.get("HOTSCOACH_DATA") or config.data_dir("hots"))
+    ow, hots = _dirs()
     return [(t, p / PAGE_NAME) for t, p in (("Overwatch 2", ow), ("Heroes of the Storm", hots)) if (p / PAGE_NAME).exists()]
 
 
@@ -83,5 +95,38 @@ def write_link(create: bool = False) -> Path | None:
 
 
 def open_page(page: Path) -> None:
+    """Open a page: through the local server when it is running (so its buttons work), else as a file."""
     import webbrowser
-    webbrowser.open(Path(page).resolve().as_uri())
+    from .serve import PORT, running
+    page = Path(page).resolve()
+    ow, hots = (p.resolve() / PAGE_NAME for p in _dirs())
+    if page in (ow, hots) and running():
+        webbrowser.open(f"http://127.0.0.1:{PORT}/" + ("" if page == ow else "hots/"))
+        return
+    webbrowser.open(page.as_uri())
+
+
+def write_shortcut() -> Path | None:
+    """Windows: a desktop shortcut that runs `pythonw -m owcoach serve` with this Python. None
+    elsewhere, or if it couldn't be made (the HTML link still works, with copy buttons)."""
+    d = desktop()
+    if sys.platform != "win32" or d is None:
+        return None
+    exe = Path(sys.executable)
+    pyw = exe.with_name("pythonw.exe")
+    target = pyw if pyw.exists() else exe
+    lnk = d / SHORTCUT_NAME
+    here = Path(__file__).resolve().parent.parent      # so `-m owcoach` imports from a checkout too
+
+    def q(x) -> str:
+        return "'" + str(x).replace("'", "''") + "'"
+
+    ps = (f"$s=(New-Object -ComObject WScript.Shell).CreateShortcut({q(lnk)});$s.TargetPath={q(target)};"
+          f"$s.Arguments='-m owcoach serve';$s.WorkingDirectory={q(here)};"
+          "$s.Description='CoachClaude: the coaching page, with working buttons';$s.Save()")
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], check=True,
+                       capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return lnk if lnk.exists() else None
