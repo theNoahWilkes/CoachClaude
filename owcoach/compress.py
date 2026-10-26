@@ -25,6 +25,7 @@ from .probe import cuda_decode_ok, nvenc_ok, probe
 CROP_RE = re.compile(r"crop (\d+):(\d+):(\d+):(\d+)")
 SPEED = 3.5            # x realtime, NVENC p3 on a 3080 Ti (2026-10-25)
 TOLERANCE_S = 0.5      # one GOP
+SIZE_RATIO = 0.3       # the encode's size over the header-cropped copy's (~1/3.3, 2026-10-25)
 
 
 def state(gdir: Path) -> str | None:

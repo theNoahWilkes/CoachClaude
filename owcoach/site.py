@@ -334,17 +334,20 @@ def _session(sdir: Path) -> dict | None:
 
 
 def day_actions(day: dict) -> list[dict]:
-    """One button per day: compress every match of the day that is still a big lossless copy."""
-    from .compress import estimate_min
+    """One button per day: compress every match of the day that is still a big lossless copy.
+    A day with nothing left to compress gets a line with its size instead."""
+    from .compress import SIZE_RATIO, estimate_min
     lib = library()
     dirs = [lib / s["name"] / g["dir"] for s in day["sessions"] for g in s["games"]]
     big = [d for d in dirs if compress_state(d) == "big"]
     if not big:
-        return []
+        small = [d for d in dirs if compress_state(d) == "compressed"]
+        gb = sum((d / "match.mp4").stat().st_size for d in small) / 1e9
+        return [{"text": f"<span class=dim>{gb:.1f} GB (compressed)</span>"}] if small else []
     gb = sum((d / "match.mp4").stat().st_size for d in big) / 1e9
     mins = max(1, round(sum(estimate_min(d) for d in big)))
-    return [{"text": f"{len(big)} match clip{'s' if len(big) != 1 else ''} from this day {'are' if len(big) != 1 else 'is'} lossless, {gb:.1f} GB. "
-                     f"Compressing keeps about a third and looks the same; the GPU is busy for about {mins} min.",
+    n = f"{len(big)} match{'es' if len(big) != 1 else ''}"
+    return [{"text": f"Compressing {n} would take about {mins} min and save {gb * (1 - SIZE_RATIO):.0f} GB.",
              "label": "Compress this day", "action": "compress", "args": {"dirs": [_rel_dir(d) for d in big]},
              "cmd": f"owcoach compress {day['date']}"}]
 
