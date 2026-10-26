@@ -23,5 +23,5 @@ packages = ["coachlib", "owcoach"]
 py-modules = ["hotscoach"]
 
 [tool.setuptools.package-data]
-owcoach = ["assets/*"]
+owcoach = ["assets/*", "assets/heroes/*"]
 coachlib = ["skills/*/SKILL.md", "skills/*/references/*.md", "skills/*/briefs/*.md"]

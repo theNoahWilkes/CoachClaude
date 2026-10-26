@@ -118,10 +118,16 @@ def cmd_packet(a):
 
 
 def cmd_hero(a):
-    from .herowiki import write_note
-    for h in a.hero:
+    from .heroes import HEROES
+    from .herowiki import BUNDLED, write_note
+    names = HEROES if a.all else [h.replace("_", " ") for h in a.hero]
+    if not names:
+        raise SystemExit("name a hero, or --all")
+    for i, h in enumerate(names):
+        if i:
+            time.sleep(1)           # one page a second: the wiki is someone else's server
         try:
-            print(f"  {h}: {write_note(h.replace('_', ' '))}")
+            print(f"  {h}: {write_note(h, out_dir=BUNDLED if a.bundle else None)}")
         except Exception as e:      # the wiki is optional; say why and go on
             print(f"  {h}: {e}")
 
@@ -506,7 +512,9 @@ def main(argv=None):
     s.set_defaults(fn=cmd_split)
 
     s = sub.add_parser("hero", help="write <profile>/heroes/<Hero>.md from the Overwatch wiki (reference for the coach)")
-    s.add_argument("hero", nargs="+", help="hero names as the wiki spells them, e.g. Mizuki Lifeweaver Wrecking_Ball")
+    s.add_argument("hero", nargs="*", help="hero names as the wiki spells them, e.g. Mizuki Lifeweaver Wrecking_Ball")
+    s.add_argument("--all", action="store_true", help="every hero owcoach knows (about a minute)")
+    s.add_argument("--bundle", action="store_true", help="write owcoach's bundled notes instead (for a release)")
     s.set_defaults(fn=cmd_hero)
 
     s = sub.add_parser("hud", help="HP and ability states for the whole session (2 fps); run after events")
