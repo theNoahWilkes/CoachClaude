@@ -4,7 +4,7 @@
   owcoach new                                    recordings in the capture folders not in the library yet
   owcoach run     REC.mp4|STEM                   every local stage: scan segment events hud split packet
   owcoach coach   [SESSION ...] [--new]          per-game claude processes + summary (the paid part)
-  owcoach compress SESSION [m01 ...]             re-encode match clips smaller for storage (GPU)
+  owcoach compress DAY|SESSION ...               re-encode a day's match clips smaller for storage (GPU)
   owcoach serve                                  the page with working buttons (local server)
   owcoach config  [KEY]                          the resolved paths
   owcoach migrate --from OLD_DIR                 move the pre-2026-10-17 layout into the library
@@ -139,6 +139,10 @@ def cmd_focus(a):
     from .focus import apply, show
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
+        if a.on or a.off or a.add:
+            from .focus import add, set_active
+            print(add(a.add) if a.add else set_active(a.on or a.off, bool(a.on)))
+            return
         picks = [int(x) for x in ",".join(a.n).replace(" ", ",").split(",") if x]
         print(apply(picks, a.set) if (picks or a.set) else show())
     except (ValueError, FileNotFoundError) as e:
@@ -342,16 +346,22 @@ def cmd_site(a):
 
 
 def cmd_compress(a):
+    import re
     import sys
     from .compress import compress, state
-    from .config import resolve_session
+    from .config import library, resolve_session
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sdir = resolve_session(a.session)
-    if not sdir.is_dir():
-        raise SystemExit(f"compress: no session {a.session!r} in the library")
-    want = {g[:3] for g in a.games}
-    dirs = [d for d in sorted(sdir.glob("m[0-9]*")) if d.is_dir() and (not want or d.name[:3] in want)]
-    todo = [d for d in dirs if state(d) == "big"]
+    sessions = []
+    for t in a.target:
+        d = re.fullmatch(r"(\d{4})[-.](\d{2})[-.](\d{2})", t)
+        found = sorted(library().glob(f"{d[1]}.{d[2]}.{d[3]} - *")) if d else [resolve_session(t)]
+        found = [s for s in found if s.is_dir() and (s / "session.json").exists()]
+        if not found:
+            raise SystemExit(f"compress: no session {t!r} in the library")
+        sessions += found
+    want = {g[:3] for g in a.games or []}
+    todo = [d for s in sessions for d in sorted(s.glob("m[0-9]*"))
+            if d.is_dir() and (not want or d.name[:3] in want) and state(d) == "big"]
     if not todo:
         raise SystemExit("compress: nothing to compress (already compressed, or no match.mp4)")
     for d in todo:
@@ -530,7 +540,10 @@ def main(argv=None):
     s = sub.add_parser("focus", help="show the coach's focus proposal, or pick the next focus: owcoach focus 2 [4]")
     s.add_argument("n", nargs="*", help="option number(s) from <profile>/focus_proposal.md, e.g. 2 4 or 2,4")
     s.add_argument("--set", metavar="WORDING", help="your own wording for the focus (with or without numbers)")
-    s.set_defaults(fn=cmd_focus)
+    s.add_argument("--on", metavar="WORDING", help="make a focus item active (the page's toggle)")
+    s.add_argument("--off", metavar="WORDING", help="set a focus item aside (it stays listed)")
+    s.add_argument("--add", metavar="WORDING", help="add your own focus item, active straight away")
+    s.set_defaults(fn=cmd_focus, needs_tools=False)
 
     s = sub.add_parser("trend", help="per-10 stats of recent games vs the player's baseline")
     s.add_argument("--games", type=int, help="recent = the last N games (default: the latest session)")
@@ -570,9 +583,9 @@ def main(argv=None):
     s.add_argument("--open", action="store_true", help="open it in the browser")
     s.set_defaults(fn=cmd_site, needs_tools=False)
 
-    s = sub.add_parser("compress", help="re-encode matches' match.mp4 on the GPU for storage (~1/3 the size), in place")
-    s.add_argument("session", help="session folder or name")
-    s.add_argument("games", nargs="*", help="only these matches, e.g. m01 m04 (default: every one)")
+    s = sub.add_parser("compress", help="re-encode match clips on the GPU for storage (~1/3 the size), in place")
+    s.add_argument("target", nargs="+", help="a day (2026-10-25: every session that day) or a session folder or name")
+    s.add_argument("--games", nargs="+", metavar="mNN", help="only these matches, e.g. m01 m04")
     s.set_defaults(fn=cmd_compress)
 
     s = sub.add_parser("serve", help="open the page with working buttons (pick the focus, ...): a local server on 127.0.0.1")

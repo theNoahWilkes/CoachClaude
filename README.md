@@ -13,8 +13,9 @@ Everything the coaches write goes to one page per game you can open and browse:
 browser when coaching finishes, and `setup` puts a **CoachClaude** shortcut on your desktop
 that opens it any time (delete it if you don't want it; it won't come back).
 
-The page has buttons: pick your next focus from the focus proposal, or compress a match you're
-keeping (its clip shrinks to about a third, re-encoded on the GPU). The desktop shortcut starts
+The page has buttons. On **Focus**, turn your focus items on and off (up to three; one or two is
+best), see the coach's new ideas, and add your own. On each day, **Compress this day** shrinks
+that day's match clips to about a third for keeping (re-encoded on the GPU, in the background). The desktop shortcut starts
 a small server on your own PC (`owcoach serve`, reachable from nowhere else) so the buttons
 work, and it stops by itself once the page has been closed for a while. Opened as a plain file,
 each button copies its command for a terminal instead.
@@ -76,9 +77,9 @@ recordings, runs the pipeline and the per-game coaching, and reads the summary b
 owcoach new                 # recordings not in the library yet
 owcoach coach --new         # process + coach them (one claude process per game; -y skips the prompt)
 owcoach coach "2026.10.16 - 22.23.04.03" --games "m01"   # re-coach one game
-owcoach focus               # the coach's focus proposal; `focus 2 4` picks
+owcoach focus               # the coach's focus proposal; `focus 2 4` picks, `--on/--off/--add "..."` toggles
 owcoach serve               # the page with working buttons (what the desktop shortcut runs)
-owcoach compress "<session>" m02   # shrink a match's clip for storage (GPU; no matches = all)
+owcoach compress 2026-10-25        # shrink a day's match clips for storage (GPU)
 owcoach run "<stem>"        # only the local stages, no coaching
 owcoach site --open         # <library>/coaching.html (default ~/Videos/owcoach)
 owcoach trend --role support

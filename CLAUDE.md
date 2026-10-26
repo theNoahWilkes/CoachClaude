@@ -34,6 +34,8 @@ one starts with a new ADR that supersedes it. The ones most often relevant:
 
 - **The page acts through a local server** ([0013](docs/adr/0013-page-acts-through-a-local-server.md)).
   A button calls the same function as its CLI command; opened as a file, it copies the command.
+- **Up to three focus items** ([0014](docs/adr/0014-up-to-three-focus-items.md)), toggled on the
+  page; supersedes 0003's single focus.
 
 Overwatch pipeline internals, stage by stage, are in [docs/ow/pipeline.md](docs/ow/pipeline.md).
 

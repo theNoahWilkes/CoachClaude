@@ -27,7 +27,8 @@ link (`coachlib/launcher.py`).
 
 `owcoach serve` (`owcoach/serve.py` over `coachlib/serve.py`) puts the page on
 `http://127.0.0.1:8765/` so its buttons work ([ADR 0013](../adr/0013-page-acts-through-a-local-server.md)):
-"focus" calls `focus.apply`, "compress" queues `compress.compress` per match. `compress`
+"focus" calls `focus.set_active` / `focus.add` ([ADR 0014](../adr/0014-up-to-three-focus-items.md)),
+"compress" (one button per day) queues `compress.compress` for each of the day's matches. `compress`
 re-encodes an existing `match.mp4` in place with split's NVENC settings: a header-cropped clip
 decodes to the game area already, so it gets no crop filter (`crop W:H:0:0`); the encode
 replaces the clip only when its duration matches, and `clip_video` becomes `crop ... cq 23`.

@@ -1,8 +1,8 @@
 """`owcoach serve`: the coaching page with working buttons (see coachlib.serve).
 
 Each action here calls the same function as its CLI command, so the page and the terminal
-can't drift: "focus" is `owcoach focus N` / `owcoach focus --set "..."`, "compress" is
-`owcoach compress SESSION m01 ...` (queued: it runs in the background, one match at a time).
+can't drift: "focus" is `owcoach focus --on/--off/--add "..."`, "compress" is
+`owcoach compress DAY` (queued: it runs in the background, one match at a time).
 """
 from __future__ import annotations
 
@@ -14,12 +14,14 @@ from .site import PAGE_NAME, build
 
 
 def act_focus(args: dict) -> dict:
-    picks = [int(n) for n in args.get("n") or []]
-    custom = (args.get("set") or "").strip() or None
-    if not picks and not custom:
-        raise ValueError("pick an option, or type your own wording")
-    msg = focus.apply(picks, custom)
-    return {"message": msg.splitlines()[0].replace("focus set (1): ", "Next focus: "), "reload": True}
+    """{"wording": ..., "on": bool} toggles an item; {"add": ...} adds the player's own, active."""
+    if (args.get("add") or "").strip():
+        msg = focus.add(args["add"])
+    elif args.get("wording"):
+        msg = focus.set_active(str(args["wording"]), bool(args.get("on")))
+    else:
+        raise ValueError("nothing to change")
+    return {"message": msg, "reload": True}
 
 
 def compress_action(jobs: srv.Jobs):

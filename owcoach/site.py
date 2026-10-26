@@ -183,7 +183,6 @@ def _game(gdir: Path, session: dict) -> dict:
         if (pk_dir / "moments.m3u").exists():
             g["links"].append({"label": "moments.m3u (VLC)", "href": _rel(pk_dir / "moments.m3u")})
         g["links"].append({"label": "match.mp4", "href": g["video"], "blank": True})
-    g["actions"] = compress_actions(gdir)
     clip_cell = {"compressed": "compressed", "big": "lossless"}.get(compress_state(gdir) or "", "")
     if not pk:
         g["title"] = " · ".join(str(x) for x in (mj.get("map") or gdir.name, (mj.get("result") or "").capitalize()) if x)
@@ -327,16 +326,6 @@ def _session(sdir: Path) -> dict | None:
                 s["games"].append(_game(gdir, s))
         if not summary and s["games"]:
             s["warn"] = "No session summary."
-        big = [sdir / gd["dir"] for gd in s["games"] if any(a.get("action") == "compress" for a in gd.get("actions") or [])]
-        if big:
-            from .compress import estimate_min
-            sess = sdir.name.removeprefix("Overwatch 2 ")
-            s["actions"] = [{"text": f"{len(big)} of {len(s['games'])} matches are big lossless copies "
-                                     f"({sum((d / 'match.mp4').stat().st_size for d in big) / 1e9:.1f} GB).",
-                             "label": f"Compress all {len(big)}" if len(big) > 1 else "Compress it", "action": "compress",
-                             "args": {"dirs": [_rel_dir(d) for d in big]},
-                             "title": f"GPU, about {max(1, round(sum(estimate_min(d) for d in big)))} min, in the background",
-                             "cmd": f'owcoach compress "{sess}"'}]
         clips = {gd["dir"][:3]: {"id": gd["id"], **gd["clips"]} for gd in s["games"] if gd.get("clips") and gd.get("video")}
         s["summary_md"] = link_moments(summary, clips)
     if (t := _trend_table(_json(sdir / "trend.json"))):
@@ -344,39 +333,56 @@ def _session(sdir: Path) -> dict | None:
     return s
 
 
-def compress_actions(gdir: Path) -> list[dict]:
-    """'Compress this match' while match.mp4 is a big stream copy; a line saying so once it isn't."""
-    from .compress import estimate_min, state
-    st = state(gdir)
-    if st is None:
+def day_actions(day: dict) -> list[dict]:
+    """One button per day: compress every match of the day that is still a big lossless copy."""
+    from .compress import estimate_min
+    lib = library()
+    dirs = [lib / s["name"] / g["dir"] for s in day["sessions"] for g in s["games"]]
+    big = [d for d in dirs if compress_state(d) == "big"]
+    if not big:
         return []
-    size = (gdir / "match.mp4").stat().st_size / 1e9
-    if st == "compressed":
-        return [{"text": f"<span class=dim>Compressed for storage ({size:.1f} GB).</span>"}]
-    sess = gdir.parent.name.removeprefix("Overwatch 2 ")
-    return [{"text": f"match.mp4 is {size:.1f} GB, a lossless copy. Compressing keeps about a third of that and looks the same "
-                     f"(GPU, about {max(1, round(estimate_min(gdir)))} min).",
-             "label": "Compress this match", "action": "compress", "args": {"dirs": [_rel_dir(gdir)]},
-             "cmd": f'owcoach compress "{sess}" {gdir.name[:3]}'}]
+    gb = sum((d / "match.mp4").stat().st_size for d in big) / 1e9
+    mins = max(1, round(sum(estimate_min(d) for d in big)))
+    return [{"text": f"{len(big)} match clip{'s' if len(big) != 1 else ''} from this day {'are' if len(big) != 1 else 'is'} lossless, {gb:.1f} GB. "
+                     f"Compressing keeps about a third and looks the same; the GPU is busy for about {mins} min.",
+             "label": "Compress this day", "action": "compress", "args": {"dirs": [_rel_dir(d) for d in big]},
+             "cmd": f"owcoach compress {day['date']}"}]
 
 
 def _rel_dir(d: Path) -> str:
     return d.relative_to(library()).as_posix()
 
 
-def focus_actions(text: str) -> list[dict]:
-    """A button per option of the focus proposal, and a box for the player's own wording."""
-    from .focus import parse_proposal
+def focus_page() -> dict:
+    """The Focus page (ADR 0014): every focus item with an on/off toggle, the coach's new ideas
+    marked, a box for the player's own, and a nudge at the cap."""
+    from .focus import MAX_ACTIVE, items
     try:
-        _, options = parse_proposal(text)
-    except ValueError:
-        return []
-    acts = [{"text": f"<b>{o['n']}. {html.escape(o['title'])}</b>", "label": "Keep this focus" if o["title"].lower().startswith("keep") else "Make this my focus",
-             "action": "focus", "args": {"n": [o["n"]]}, "cmd": f"owcoach focus {o['n']}", "title": o["wording"]}
-            for o in options]
-    acts.append({"input": "set", "placeholder": "or your own wording: when <trigger>, <action>", "label": "Use my wording",
-                 "action": "focus", "cmd": 'owcoach focus --set "{}"'})
-    return acts
+        its = items()
+    except (OSError, ValueError):
+        its = []
+    n_on = sum(i["active"] for i in its)
+    n_new = sum(i["new"] for i in its)
+    acts = []
+    for i in its:
+        w = html.escape(i["wording"])
+        badge = '<span class="flag">new from coaching</span> ' if i["new"] else ""
+        ev = "".join(f"<br><small class=dim>{html.escape(x.lstrip('-* '))}</small>" for x in i.get("evidence") or [])
+        acts.append({"text": f"{badge}<b>{w}</b>" + (f" <small class=dim>{html.escape(i['note'])}</small>" if i["note"] and not ev else "") + ev,
+                     "label": "Active" if i["active"] else "Off", "on": i["active"], "action": "focus",
+                     "args": {"wording": i["wording"], "on": not i["active"]},
+                     "title": "Click to turn it off" if i["active"] else "Click to make it active",
+                     "cmd": f'owcoach focus --{"off" if i["active"] else "on"} "{i["wording"]}"'})
+    acts.append({"input": "add", "placeholder": "your own: when <trigger>, <action>", "label": "Add, active",
+                 "action": "focus", "cmd": 'owcoach focus --add "{}"'})
+    if n_on >= MAX_ACTIVE:
+        intro = (f'<span class="nag">{n_on} focus items are active, the most there can be. One or two work better: '
+                 "the coach grades each one every match, and it's hard to think about three things in a fight.</span>")
+    elif n_on:
+        intro = f"{n_on} active. The coach grades each active item every match. Up to {MAX_ACTIVE} can be on; one or two work best."
+    else:
+        intro = "No active focus. Turn one on, or add your own."
+    return {"id": "focus", "title": "Focus", "nav": f"Focus ({n_new} new)" if n_new else "Focus", "intro": intro, "actions": acts}
 
 
 def collect() -> dict:
@@ -400,13 +406,9 @@ def collect() -> dict:
                                     for h, v in by_hero.items()]})
     except Exception:            # history is optional for the page
         pass
-    focus = _read(prof / "focus_proposal.md")
-    pages = [{"id": "lessons", "title": "Lessons", "md": _read(prof / "lessons.md")}]
-    if focus:
-        pages.append({"id": "focus", "title": "Focus proposal", "nav": "Focus proposal (waiting)",
-                      "intro": "Pick the focus for your next session. Two habits at once, or a choice from an older proposal, still go "
-                               "through <code>owcoach focus 1 4</code>.",
-                      "actions": focus_actions(focus), "md": focus})
+    focus = focus_page()
+    pages = [focus, {"id": "lessons", "title": "Lessons", "md": _read(prof / "lessons.md")}]
+    new_focus = focus["nav"] != "Focus"
     other = None
     try:
         from coachlib.config import data_dir
@@ -420,8 +422,8 @@ def collect() -> dict:
         "home_title": f"{player} · Overwatch 2 coaching",
         "home_sub": f"{len(allg)} games in {len([s for s in sessions if s['kind'] == 'session'])} sessions, {sum(1 for g in allg if g['coached'])} coached · "
                     f"library <code>{lib}</code> · profile <code>{prof}</code> · built {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-        "banner": "A focus proposal is waiting: pick your next focus on [Focus proposal](#focus)." if focus else None,
-        "columns": COLUMNS, "days": [days[k] for k in sorted(days, reverse=True)], "pages": pages, "tables": tables,
+        "banner": "The coach has a new focus idea: see [Focus](#focus)." if new_focus else None,
+        "columns": COLUMNS, "days": [dict(days[k], actions=day_actions(days[k])) for k in sorted(days, reverse=True)], "pages": pages, "tables": tables,
         "notes": ["Reports and notes are the coach's text, unedited. Stills and clips are read from the library next to this file; nothing is copied.",
                   "Clips are the recording's own HEVC HDR stream. Edge and Chrome play them with the HEVC extension; colours look flat on an SDR "
                   "screen. The VLC link plays the moments properly."],

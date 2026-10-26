@@ -5,9 +5,10 @@ collect_hots) decides the content and hands over this shape:
 
   tree:    app, player, title, generated, version, columns [{key, label, align?}], days [...], pages [...],
            tables [...] (home extras), notes [str], other {title, href} | None, banner (md) | None
-  day:     date (YYYY-MM-DD), sessions [session], combined [session]   (combined = a summary over sessions)
+  day:     date (YYYY-MM-DD), sessions [session], combined [session]   (combined = a summary over sessions),
+           actions [action] (on the day page, after its matches table)
   session: id, label, date, kind ("session" | "combined"), sub (html), games [game], summary_md,
-           tables [table], warn (str), actions [action] (on the day page, after its matches table)
+           tables [table], warn (str)
   game:    id, title, nav (sidebar text, without the result) | None, sub (html), result (class suffix),
            coached, processed, cells {key: str | {text, cls}},
            warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
@@ -24,8 +25,7 @@ collect_hots) decides the content and hands over this shape:
   action:  label, action (name the local server answers), args {} | None, cmd (the same thing as a
            CLI command, copied when the page is opened as a file), title (hover text) | None,
            input (an args key filled from a text box; cmd has {} where the text goes) | None,
-           placeholder | None, text (a line before the button) | None
-           game.actions sit under the game's title the same way.
+           placeholder | None, text (html before the button) | None, on (bool: a toggle that is on)
 
 Buttons: an action is a button. Served by coachlib.serve, the page carries a token and a click
 POSTs to /api/<action>; opened as a file, a click copies `cmd` to the clipboard instead.
@@ -151,7 +151,7 @@ def actions_html(acts: list[dict] | None) -> str:
     """Buttons for the local server (see coachlib.serve), one row each."""
     rows = []
     for a in acts or []:
-        attrs = "" if not a.get("action") else (f'class="act" data-action="{e(a["action"])}" data-args="{e(json.dumps(a.get("args") or {}))}" '
+        attrs = "" if not a.get("action") else (f'class="act{" on" if a.get("on") else ""}" data-action="{e(a["action"])}" data-args="{e(json.dumps(a.get("args") or {}))}" '
                  f'data-cmd="{e(a.get("cmd") or "")}"' + (f' title="{e(a["title"])}"' if a.get("title") else "")
                  + (f' data-input="{e(a["input"])}"' if a.get("input") else ""))
         box = f'<input type="text" placeholder="{e(a.get("placeholder") or "")}">' if a.get("input") else ""
@@ -197,7 +197,6 @@ def _game(tree: dict, g: dict, day: dict, prev: dict | None, nxt: dict | None) -
         out.append(f'<p class="sub">{g["sub"]}</p>')
     for w in g.get("warnings") or []:
         out.append(f'<p class="warn">{w}</p>')
-    out.append(actions_html(g.get("actions")))
     if g.get("tables") or g.get("images"):
         out.append('<div class="two"><div>' + "".join(table_html(t) for t in g.get("tables") or []) + "</div>"
                    + '<div class="imgs">' + "".join(f'<a href="{e(i["src"])}" target="_blank"><img src="{e(i["src"])}" loading="lazy" alt="{e(i.get("alt"))}"></a>'
@@ -253,8 +252,7 @@ def _day(tree: dict, day: dict) -> str:
     out.append(f'<p class="sub">{" · ".join(x for x in [head] + subs if x)}</p>')
     if games:
         out.append(games_table(tree, games))
-    for s in parts:
-        out.append(actions_html(s.get("actions")))
+    out.append(actions_html(day.get("actions")))
     summaries = [s for s in parts if s.get("summary_md")]
     for s in parts:
         if s.get("summary_md"):
@@ -337,7 +335,7 @@ button.seek{background:#2a3140;color:var(--ink);border:1px solid var(--line);bor
 .strip span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);font-size:11px;padding:0 4px;border-radius:2px}
 details{margin:6px 0}summary{cursor:pointer;color:var(--dim)}pre.facts{white-space:pre-wrap;font-size:12.5px;background:#101214;padding:8px;line-height:1.4}
 .acts{margin:10px 0 14px}.actrow{display:flex;gap:10px;align-items:center;margin:6px 0;max-width:900px}.actrow span{flex:1}
-.dim{color:var(--dim)}#jobs a{margin-left:6px;cursor:pointer}
+.dim{color:var(--dim)}.nag{color:var(--acc)}.actrow small{font-size:13px}button.act.on:hover{background:#ffbf5a}#jobs a{margin-left:6px;cursor:pointer}
 .actrow input{flex:1;background:#101214;color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:4px 8px;font:inherit}
 button.act{background:#3a2f18;color:var(--ink);border:1px solid var(--acc);border-radius:3px;padding:4px 12px;cursor:pointer;font:inherit;font-size:14px;white-space:nowrap}
 button.act:hover{background:#4a3a1c}button.act:disabled{opacity:.5;cursor:wait}button.act.on{background:var(--acc);color:#141619}
@@ -423,7 +421,7 @@ def render(tree: dict) -> str:
         nav.append(f'<a href="#{e(pg["id"])}" data-page="{e(pg["id"])}" class="top">{e(pg.get("nav") or pg["title"])}</a>')
         pages.append(f'<section class="page" id="p-{e(pg["id"])}"><h1>{e(pg["title"])}</h1>'
                      + (f'<p class="sub">{pg["intro"]}</p>' if pg.get("intro") else "") + actions_html(pg.get("actions"))
-                     + f'<div class="md">{md(pg.get("md")) or "<p class=warn>Nothing here yet.</p>"}</div></section>')
+                     + f'<div class="md">{md(pg.get("md")) or ("" if pg.get("actions") else "<p class=warn>Nothing here yet.</p>")}</div></section>')
     days = [d for d in tree["days"] if d["sessions"] or d.get("combined")]
     for i, day in enumerate(days):
         day = dict(day, id=slug(day["date"]), long=day_label(day["date"], long=True))

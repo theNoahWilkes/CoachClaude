@@ -24,8 +24,8 @@ shape, since `owcoach focus` parses it:
 ```
 # Focus proposal, <YYYY-MM-DD>
 
-After <session date and record>. Pick with `owcoach focus N` (two numbers for two habits), or
-`owcoach focus --set "..."` for your own wording. What you don't pick stays listed as an option.
+After <session date and record>. Turn options on or off on the page's Focus page (up to three;
+one or two is best), or pick with `owcoach focus N`. What you don't pick stays listed as an option.
 
 ## 1. Keep: <short title>
 **<the current focus wording, verbatim>**

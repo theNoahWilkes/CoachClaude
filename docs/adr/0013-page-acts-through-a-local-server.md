@@ -24,10 +24,11 @@ need something on the player's machine to answer them.
 - **Slow actions queue.** A compress is a GPU re-encode of minutes, so it joins one background
   queue; the page shows it and can cancel what hasn't started.
 
-Today's actions are Overwatch's: pick the focus from the focus proposal, and compress a match
-(or a whole day) for storage. The HotS page is served too (at `/hots/`) but has no buttons yet;
-it has no focus proposal or clips to act on, a gap from [0001](0001-experience-contract.md)
-until the focus loop of [0003](0003-focus-loop.md) lands there.
+Today's actions are Overwatch's: turn focus items on and off, or add one
+([0014](0014-up-to-three-focus-items.md)), and compress a day's matches for storage. Compress is
+one button per day: whether to spend the GPU on it is a decision about the whole sitting, never
+one match or one recording of it. The HotS page is served too (at `/hots/`) but has no buttons
+yet; it has no focus list or clips to act on, a gap from [0001](0001-experience-contract.md).
 
 ## Considered Options
 
