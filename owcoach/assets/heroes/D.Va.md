@@ -17,10 +17,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - No movement speed penalty while Boosters are active.
 - **Light Gun** (LMB), weapon (pilot)
   Automatic weapon.
-  - Damage per second: while firing ( overall w/ reload)
 - **Defense Matrix** (RMB), ability (mech): cooldown 1 second, range 10.3 meters, duration 0.5 seconds (min); 3 seconds (max); 0.75 seconds (energy regen delay)
   Block projectiles in an area in front of you.
-  - D.Va cannot fire or use quick melee while channeling Defense Matrix.
+  - D.Va cannot fire Fusion Cannons or use quick melee while channeling Defense Matrix.
   - Can be used simultaneously with Boosters and Micro Missiles.
   - Defense Matrix has a resource meter which depletes while it is active and recharges when not in use.
 - **Boosters** (LSHIFT), ability (mech): cooldown 4 seconds, range 24 meters, duration 0.4 seconds (min); 2 seconds (max)
@@ -30,9 +29,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Boosters movement speed is unaffected by gravity, but is affected by slowing effects.
 - **Micro Missiles** (E), ability (mech): cooldown 7 seconds
   Launch a volley of explosive rockets.
-  - Damage per second: while firing
   - Deals up to a total of 135 damage with direct hits.
   - Cannot be manually cancelled.
+  - If the ability is interrupted before the end of the casting time, the cooldown will not start.
 - **Self-Destruct** (Q), ultimate ability (mech): duration 3 seconds
   Eject and overload your mech, causing it to explode after a short time.
   - Enemies hit by the explosion are also knocked back.

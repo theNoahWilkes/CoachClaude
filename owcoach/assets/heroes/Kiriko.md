@@ -13,12 +13,11 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Can reach up to 10.3m height (11m with jump) due to momentum being kept after wall climb ends.
 - **Healing Ofuda** (LMB), weapon: range 35 meters (lock on)
   Channel a burst of healing talismans that can seek targeted allies.
-  - Healing per second: while firing ( w/ reload)
   - Default behavior is a toggle, meaning pressing the button will cause Kiriko to hold down the ability. If you don't want to use all 10 Healing Ofuda, you must press again to toggle off. This setting can be changed in the 
   - After being thrown, the talismans are either yellow or blue. The color indicates whether they are homing in on a target.
+  - Healing Ofuda are destroyed upon impact with terrain (whether they were homing or not).
 - **Kunai** (RMB), weapon
   Thrown long-ranged projectile.
-  - Damage per second: while firing ( overall w/reload)
 - **Swift Step** (LSHIFT), ability: cooldown 7 seconds, range 30 meters, duration 0.25 second invulnerability
   Teleport directly to an ally.
   - Swift Step can target allies through walls.

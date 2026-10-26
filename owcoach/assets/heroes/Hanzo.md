@@ -13,9 +13,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Can reach up to 8.8m height (10m with Lunge) due to momentum being kept after Wall Climb ends.
 - **Storm Bow** (LMB), weapon
   Hold to charge then release to launch arrows further.
-  - Damage per second: at full charge, at min charge
   - Fire recovery stops while using melee.
   - The arrow can deal damage no earlier than 0.032 second after being launched.
+  - Takes 0.72 seconds to reach maximum draw. Draw can be held indefinitely.
 - **Sonic Arrow** (LSHIFT), ability: cooldown 12 seconds, duration 6 seconds
   Reveals enemies for a short time upon impact.
   - Pressing the ability key turns the next arrow from Storm Bow or Storm Arrows into a Sonic Arrow. This does not change the speed, damage or projectile radius of the arrow. Pressing the key again before firing changes it b

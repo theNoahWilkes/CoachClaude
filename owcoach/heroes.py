@@ -36,15 +36,15 @@ from .scan import frame_path, grab_frame
 
 # Names as printed in the TAB side panel. Unlisted heroes don't snap; add them here.
 HEROES = [
-    "Ana", "Ashe", "Baptiste", "Bastion", "Brigitte", "Cassidy", "D.Va", "Doctrine", "Doomfist",
-    "Echo", "Freja", "Genji", "Hanzo", "Hazard", "Illari", "Junker Queen", "Junkrat", "Juno",
-    "Kiriko", "Lifeweaver", "Lúcio", "Mauga", "Mei", "Mercy", "Mizuki", "Moira", "Orisa",
+    "Ana", "Ashe", "Baptiste", "Bastion", "Brigitte", "Cassidy", "D.Mon", "D.Va", "Doctrine",
+    "Doomfist", "Echo", "Freja", "Genji", "Hanzo", "Hazard", "Illari", "Junker Queen", "Junkrat",
+    "Juno", "Kiriko", "Lifeweaver", "Lúcio", "Mauga", "Mei", "Mercy", "Mizuki", "Moira", "Orisa",
     "Pharah", "Ramattra", "Reaper", "Reinhardt", "Roadhog", "Sigma", "Sojourn", "Soldier: 76",
     "Sombra", "Symmetra", "Torbjörn", "Tracer", "Venture", "Widowmaker", "Winston",
     "Wrecking Ball", "Wuyang", "Zarya", "Zenyatta",
 ]
-ROLE = {h: "tank" for h in ("D.Va", "Doomfist", "Hazard", "Junker Queen", "Mauga", "Orisa", "Ramattra",
-                            "Reinhardt", "Roadhog", "Sigma", "Winston", "Wrecking Ball", "Zarya")}
+ROLE = {h: "tank" for h in ("D.Mon", "D.Va", "Doomfist", "Hazard", "Junker Queen", "Mauga", "Orisa",
+                            "Ramattra", "Reinhardt", "Roadhog", "Sigma", "Winston", "Wrecking Ball", "Zarya")}
 ROLE |= {h: "damage" for h in ("Ashe", "Bastion", "Cassidy", "Echo", "Freja", "Genji", "Hanzo", "Junkrat",
                               "Mei", "Pharah", "Reaper", "Sojourn", "Soldier: 76", "Sombra", "Symmetra",
                               "Torbjörn", "Tracer", "Venture", "Widowmaker")}

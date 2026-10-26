@@ -8,12 +8,11 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **The Viper** (LMB), weapon
   Semi-automatic rifle.
-  - Damage per second: while firing ( overall w/ full reload, w/ reload after each shot)
   - Ashe reloads The Viper one bullet at a time in rapid succession, instead of all at once.
   - Unlike most weapons, The Viper is semi-automatic instead of fully automatic.
+  - Spread resets after 1.5 seconds since the last unscoped shot. Spread starts on the 3rd shot and reaches its maximum upon the 6th shot.
 - **Take Aim (ADS)** (RMB), weapon
   Hold to zoom in, increasing damage and accuracy but slowing rate of fire.
-  - Damage per second: while firing ( overall w/ full reload, w/ reload after each shot)
   - Ashe can jump while aiming down sights without interrupting it.
   - After the shot, the game raises the Ashe camera (changes the facing angle) by 1 unit, after which it starts lowering the Ashe camera to its previous value. Unlike Cassidy, Ashe will not be able to shoot once the camera i
 - **Coach Gun** (LSHIFT), ability: cooldown 10 seconds, range 15 meters (enemy knockback); 9.4 meters (self-knockback)

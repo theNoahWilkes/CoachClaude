@@ -12,7 +12,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - After the shot, the game raises the Cassidy camera (changes the facing angle) by 4 units, after which it starts lowering the character's camera to its previous value. As soon as this happens Cassidy can shoot again.
 - **Fan the Hammer** (RMB), weapon
   Wildly fire remaining rounds.
-  - Damage per second: while firing ( overall w/reload)
   - Each shot raises the Cassidy camera (changes the facing angle) by 2.5 units.
   - The first shot has no spread.
 - **Combat Roll** (LSHIFT), ability: cooldown 5 seconds, range 6.22 meters, duration 0.4 seconds

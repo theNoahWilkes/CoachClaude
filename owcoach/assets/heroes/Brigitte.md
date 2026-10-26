@@ -39,7 +39,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   Gain armor, empower Barrier Shield and provide extra health to nearby allies.
   - Overhealth per second: 30 on allies
   - Overhealth lasts up to 30 seconds, even if the ally leaves its radius or Brigitte is eliminated.
-  - During Rally, Brigitte's barrier abilities are enhanced:
+  - Rally can be activated any time, interrupting Brigitte's primary fire and any ability she is currently using.
 
 ## Perks
 - **Combat Medic** (minor perk): Melee attacks reduce the cooldown of Repair Pack by 0.75 seconds.

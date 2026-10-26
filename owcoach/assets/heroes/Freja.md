@@ -13,7 +13,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - The progress is indicated next to the ultimate meter.
 - **Revdraw Crossbow** (LMB), weapon
   Rapidly fire automatic bolts.
-  - Damage per second: while firing ( overall w/ reload)
   - Can be fired while Take Aim is reloading.
   - Maximum spread is reached at 12 shots.
 - **Take Aim** (RMB), weapon: duration 1 second (slowdown); 0.8 seconds (explosion delay)

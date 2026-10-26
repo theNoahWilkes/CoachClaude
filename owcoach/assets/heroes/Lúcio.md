@@ -13,9 +13,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - If the option "Allow Backwards Wall Ride" is enabled, Lúcio will be able to start a Wall Ride midair without needing to look at the wall or needing to move prior to Wall Riding.
 - **Sonic Amplifier** (LMB), weapon
   Sonic projectile launcher.
-  - Damage per second: while firing ( overall w/reload)
   - Projectile can deal damage no earlier than 0.032 second after being used.
   - Recovery stops while using melee.
+  - If with less than 4 ammo, a button press will only fire as many rounds are remaining.
 - **Soundwave** (RMB), ability: cooldown 5 seconds, range 7 meters, duration 0.56 s. recovery for primary
   Create a short-range blast wave to knock enemies away from you.
   - Can be used while reloading.

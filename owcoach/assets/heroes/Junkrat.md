@@ -9,13 +9,13 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Total Mayhem**, passive ability
   Deals no damage to self with explosives. Drop bombs on death.
   - The grenades will be dropped at wherever Junkrat was killed, and do not inherit his momentum. Being killed while flying through the air will drop the grenades straight down to the ground.
-  - The grenades can be negated by D.Va's , Orisa's , Sigma's , Doomfist's Power Matrix and Mizuki's Kekkai Sanctuary and they can be deflected by Genji's before exploding.
+  - The grenades can be negated by D.Va's Defense Matrix, Orisa's Javelin Spin, Sigma's Kinetic Grasp, Doomfist's Power Matrix and Mizuki's Kekkai Sanctuary and they can be deflected by Genji's Deflect before exploding.
   - Amplification Matrix affects all damage dealt, if the projectile passes through it. Splash damage alone going through is not amplified.
 - **Frag Launcher** (LMB), weapon
   Bouncing explosive projectile weapon.
   - Damage per second: 180 while firing (124.13 overall w/reload)
-  - The grenades explode after:
   - Before a nade detonates, an audio cue is played and can be heard if nearby. The nade then freezes in place for 0,3 second pre-detonation, during which the explosion can't be stopped by any means. If the nade is shot boun
+  - The projectile size is decreased after its second bounce.
 - **Concussion Mine** (LSHIFT), ability: cooldown 7 seconds, 2 charges, duration Until detonated or replaced
   Throw a knockback mine with then detonate it with secondary fire.
   - The mine sticks to any terrain and bounces off of players and objects other than Petal Platform.

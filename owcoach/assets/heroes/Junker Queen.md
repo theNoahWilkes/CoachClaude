@@ -13,7 +13,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Healing received from Adrenaline Rush grants ultimate charge.
 - **Scattergun** (LMB), weapon
   Pump action shotgun.
-  - Damage per second: while firing ( w/ reload)
   - Fire recovery stops while using melee.
 - **Jagged Blade** (RMB), ability: cooldown 6 seconds, range 60 meters, duration 3 seconds
   Active: Throw the blade. Re-activate to pull it back with any impaled enemy.; Passive: Wound enemies hit by Quick Melee or Throw, dealing damage over time.
@@ -27,7 +26,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Movement speed bonus counts towards global movement speed buff cap.
 - **Carnage** (E), ability: cooldown 9 seconds; -2 seconds (per enemy hit), range 4.5 meters, duration 3 seconds (wound); 0.144 seconds (hitbox active)
   Wound all enemies in front of you, dealing damage over time and reducing the cooldown for each enemy hit.
-  - Carnage is not reflected when blocked by .
+  - Carnage is not reflected when blocked by Deflect.
   - No wound is inflicted, if the attack is blocked by Deflect, Javelin Spin or Warding Stance.
 - **Rampage** (Q), ultimate ability: range 25 meters, duration 4.5 seconds (DoT); 0.7 seconds (dash)
   Charge foward. Wounds enemies, dealing damage over time and preventing them from being healed.

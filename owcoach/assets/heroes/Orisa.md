@@ -8,14 +8,12 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Augmented Fusion Driver** (LMB), weapon
   Automatic heat-based weapon.
-  - Damage per second: 140 while firing ( overall w/ recharge, w/ overheat)
   - Max spread is reached after 21 shots.
   - Uses a heat-based mechanic instead of ammo/reload.
 - **Energy Javelin** (RMB), ability: cooldown 7 seconds, duration 0.45 seconds (impact stun); 0.4 seconds (wall stun)
   Launch your javelin at an enemy to stun and knock them back. More effective if the enemy hits a wall.
-  - Hits the first enemy in its path, delivering a micro-stun. Deals extra damage and stuns again for if they are pushed into a wall or a terrain-like object, such as an Ice Wall.
   - Has a slider angle of 45°, meaning if the target enemy hits a wall at an angle greater than 45° from the surface normal, they will not receive the effects of a wall impact.
-  - If the javelin hits D.Va's while it is moving, the Mech will be stunned and will stop moving.
+  - If the javelin hits D.Va's Self-Destruct while it is moving, the Mech will be stunned and will stop moving.
 - **Fortify** (LSHIFT), ability: cooldown 15.5 seconds, duration 4 seconds
   Gain temporary health, reducing all damage taken and becoming unstoppable.
   - Orisa is immune to critical hits while active.

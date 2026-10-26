@@ -13,7 +13,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Can reach up to 5.7 meters from ground (6.5m with jump) due to momentum being kept.
 - **Bonespur** (LMB), weapon
   Fire a burst of spikes.
-  - Damage per second: while firing ( overall with reload)
   - Each blast's center projectile always launches straight without random variance.
 - **Spike Guard** (RMB), ability: duration 0.3 seconds (min); 2.5 seconds (max)
   Protect yourself from frontal damage. Firing homing spikes at nearby enemies and regenerating ammo.

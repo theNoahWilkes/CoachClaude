@@ -8,14 +8,13 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Tesla Cannon** (LMB), weapon: range 8 meters
   Electric frontal-cone weapon.
-  - Damage per second: 70 while firing ( overall w/reload)
   - Barrier Projector and Jump Pack can be used without interrupting fire.
   - Ignores armor damage reduction.
 - **Tesla Cannon Alt Fire** (RMB), weapon: range 40 meters
   Hold to charge, release to fire focused electricity
-  - Damage per second:
   - The amount of ammo drained increases as the ability is charged, up to 12.
   - The cannon automatically fires 1.5 seconds after reaching maximum charge.
+  - Jump Pack can be used while charging without interrupting it.
 - **Jump Pack** (LSHIFT), ability: cooldown 5 seconds
   Leap forward into the air. Landing on an enemy damages them.
   - Cooldown starts immediately after activation.

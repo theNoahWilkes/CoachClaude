@@ -8,14 +8,14 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Healing Blossom** (LMB), weapon: range 30 meters (targeting)
   Hold to charge a healing burst. Release to heal a targeted ally. Passively charges at a reduced rate while not in use.
-  - Healing per second:
   - The projectiles are fired in the direction of your reticle and start homing to the target after a small delay.
   - Can be targeted through barriers, but the projectile will be blocked by them.
+  - The blossom takes 1.2 seconds to reach maximum charge while actively firing and 5.4 seconds while not firing.
 - **Thorn Volley** (RMB), weapon
   Rapidly fire a spread of projectiles.
-  - Damage per second: while firing ( overall w/ reload)
   - One of the two thorns shot has 25% less spread.
   - Thorn Volley automatically reloads after 2 seconds, when Healing Blossom is in use.
+  - Thorn Volley's spread starts at 0 and builds to its maximum spread over 20 shots (10 volleys or ~0.9 seconds)
 - **Petal Platform** (LSHIFT), ability: cooldown 12 seconds, duration ∞ (unused); 12 seconds (raised total)
   Throw a platform that springs upwards when stepped on. Resets when not in use.
   - Cooldown starts when the platform is thrown.

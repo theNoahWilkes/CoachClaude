@@ -8,9 +8,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Quad Cannons** (LMB), weapon
   Automatic assault weapons.
-  - Damage per second: while firing ( overall w/reload)
   - There is a 0.16 seconds delay after releasing the fire button before it can be used again.
   - First two shots have perfect accuracy; bullet spread reaches max at 30 shots.
+  - Automatically reloads if Wrecking Ball is in his Roll mode for 1.6 seconds.
 - **Grappling Claw** (RMB), ability: cooldown 5 seconds (after fireball); 1 second (no fireball), range 22.2 meters (max); 6 meters (retracted), duration 8 seconds (max grapple time after fireball)
   Launch a grappling claw to rapidly swing around the area. Enables high speed collisions to damage and knockback enemies.
   - Wrecking Ball automatically enters Roll when Grappling Hook is fired and will remain in it while and after grappling.

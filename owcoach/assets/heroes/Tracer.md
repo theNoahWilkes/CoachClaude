@@ -8,7 +8,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Pulse Pistols** (LMB), weapon
   Short-range automatic weapons.
-  - Damage per second: while firing ( overall w/reload)
   - ~0.22 seconds recovery if firing is paused.
   - Maximum spread is reached after 3 shots.
 - **Blink** (LSHIFT), ability: cooldown 3 seconds, 3 charges, range 7.5 meters, duration 0.1 seconds recovery for reuse

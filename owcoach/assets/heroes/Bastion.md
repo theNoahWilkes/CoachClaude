@@ -29,7 +29,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Configuration: Artillery** (Q), ultimate ability: duration 8 seconds (max targeting); 1.25 seconds (impact delay); 0.18 seconds (min between shots)
   Become immobile and fire up to three powerful artillery shells.
   - The artillery shells are projectiles that can be blocked by barriers, destroyed by D.Va's Defense Matrix, Orisa's Javelin Spin, Sigma's Kinetic Grasp, Doomfist's Power Matrix and Mizuki's Kekkai Sanctuary and deflected w
-  - Bastion can use secondary fire (right click) to switch to a top-down view.https://www.reddit.com/r/overwatch2/comments/1mpg4ov/comment/n8jjo6x/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=s
+  - Bastion can use secondary fire (right click) to switch to a top-down view.
   - Target location becomes visible to enemy 0.6 seconds before the shell lands.
 
 ## Perks

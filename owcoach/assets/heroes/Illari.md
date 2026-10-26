@@ -8,9 +8,8 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Solar Rifle** (LMB), weapon: duration 0.65 seconds (charge time); 0.25 seconds (recovery)
   Long-range auto charging rifle.
-  - Damage per second (max charge): while firing ( overall w/ reload)
-  - Damage per second (min charge): while firing ( overall w/ reload)
   - Using secondary fire, quick melee or abilities do not interrupt charging.
+  - Charge rate is affected by Kitsune Rush.
 - **Solar Rifle Alt Fire** (RMB), weapon: range 20 meters, duration 0.6 seconds (energy regen delay)
   Medium range healing beam that consumes solar energy.
   - Can be fired continuously for 3 seconds before running out of energy.

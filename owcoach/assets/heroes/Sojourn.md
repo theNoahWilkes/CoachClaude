@@ -8,9 +8,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Railgun** (LMB), weapon: duration 9 seconds (energy decay delay)
   Rapid firing projectiles that generate energy on hit.
-  - Damage per second: while firing (~ overall w/reload)
   - Each projectile hit generates 5 energy against heroes and 1 energy against objects, such as barriers and turrets.
   - Maximum spread is reached after 12 shots.
+  - Spread is 2.5x more vertical than it is horizontal.
 - **Charged Shot** (RMB), weapon
   High impact shot that consumes stored energy and pierces enemies.
   - Can be charged up to a maximum of 100 energy but can be fired with at least 1 energy charge.
@@ -28,7 +28,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Periodic damage ignores damage reduction from armor.
 - **Overclock** (Q), ultimate ability: duration 8 seconds
   Railgun energy auto-charges for a short duration.
-  - Damage per second: (fired at max charge), (fired immediately on recovery)
   - Railgun starts charging immediately as Overclock is activated, but there is a short delay before it can be first fired.
 
 ## Perks

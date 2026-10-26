@@ -12,8 +12,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Does not generate ultimate charge.
 - **Hellfire Shotguns** (LMB), weapon
   Short-range spread weapons.
-  - Damage per second: while firing ( overall with reload)
-  - Healing per second: while firing ( overall with reload)
 - **Dire Triggers** (RMB), ability: cooldown 6 seconds
   Use (RMB) to fire a volley with long range accuracy from both Hellfire shotguns.
   - Damage per pellet is equal to 60% of the base Hellfire Shotguns' damage.
@@ -30,9 +28,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Can be used while Reaper is in the air, which will reduce Reaper's gravity by 70% while its being cast.
 - **Death Blossom** (Q), ultimate ability: duration 3 seconds
   Damage all nearby enemies.
-  - Healing per second: per enemy
   - Death Blossom locks on to all players and objects (barriers, turrets, traps, etc.) in its range that are within line of sight, and periodically fires toward each target at the same time.
   - Cannot be manually canceled.
+  - Death Blossom is a channeled ability; Reaper cannot fire or use other abilities while it's active and it is interrupted if Reaper is stunned, knocked down, or hacked, including subsidiary effects.
 
 ## Perks
 - **Lingering Wraith** (minor perk): Leaving Wraith Form grants 30% movement speed for 2 seconds.

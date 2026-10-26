@@ -12,7 +12,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Glide's movement speed buff does not count towards global movement speed buff cap.
 - **Tri-Shot** (LMB), weapon
   Fires 3 shots at once, in a triangle pattern.
-  - Damage per second: while firing ( overall w/reload)
 - **Sticky Bombs** (RMB), ability: cooldown 6 seconds, duration 1 second (explosion delay)
   Fire a volley of sticky bombs that detonate after a delay.
   - Deals up to 180 single target damage if all bombs are stuck.
@@ -22,7 +21,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   Fly forward quickly and then free-fly briefly.
   - Reveals enemy health bars without having dealt damage to them.
   - Being stunned, knocked down or mobility locked prevent the ability from being activated and make Echo temporarily unable to fly, but do not completely end the ability. Only being hacked completely interrupts the ability.
-  - Can be manually cancelled by pressing the ability key (default: ) again.
+  - Holding jump causes Echo to rise, while holding crouch causes her to descend.
 - **Focusing Beam** (E), ability: cooldown 8 seconds, range 16 meters, duration 0.24 seconds (min); 2 seconds (max)
   Channel a beam for a few seconds. Deals very high damage to targets under half health.
   - Deals 2.33 times more damage if she is targeting an enemy whose HP is 50% of their maximum or lower.

@@ -8,7 +8,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Scrap Gun** (LMB), weapon
   Short-range spread weapon.
-  - Damage per second: while firing ( overall w/ reload)
   - Fire recovery stops while using melee.
   - Primary Fire fires 2 bursts per volley
 - **Trash Compactor** (RMB), weapon: cooldown 10s
@@ -26,8 +25,8 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Whole Hog** (Q), ultimate ability: duration 7.5 seconds
   Damage and knock back enemies in front of you.
   - Damage per second: 48 per pellet, 768 total.
-  - Whole Hog transforms Roadhog weapon:
   - While firing Whole Hog, Roadhog receives a 25% movement speed penalty and cannot crouch.
+  - Whole Hog cannot be manually canceled.
 
 ## Perks
 - **Scrap Hook** (minor perk): Chain Hook hits reload 4 ammo.

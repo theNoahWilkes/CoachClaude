@@ -8,12 +8,11 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Biotic Rifle** (LMB), weapon: duration 0.59 seconds effect
   Long-range rifle that heals allies and damages enemies.
-  - Damage/healing per second: while firing ( overall w/ reload)
   - Shots pass through full health allies and do not affect them.
   - Ignores armor's damage reduction.
+  - Applies a damage/heal-over-time effect that can be cleansed. Health Packs cleanse the damage-over-time.
 - **Zoom (ADS)** (RMB), weapon
   Hold to zoom in.
-  - Besides following differences, scoped shots have the same properties as hip fire shots:
 - **Sleep Dart** (LSHIFT), ability: cooldown 14 seconds, duration 0.5 seconds (sleep min); 5 seconds (sleep max, non-tanks); 3.5 seconds (sleep max, tanks); 0.5 seconds (wakeup)
   Fires a dart that puts an enemy to sleep.
   - If a slept target takes damage, they will wake up prematurely in 0.5 seconds.

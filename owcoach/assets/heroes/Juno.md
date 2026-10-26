@@ -11,9 +11,8 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Allows Juno to jump once while airborne, and causes her to fall slower when the jump input is held.
 - **Mediblaster** (LMB), weapon
   Burst fire weapon that heals allies and damages enemies.
-  - Healing per second: (overall w/ reload )
-  - Damage per second: (overall w/ reload )
   - Within 25 meters, Juno's Mediblaster deals full damage and healing. From 25 to 35 meters, both damage and healing gradually decrease, reaching a minimum of 30% beyond 35 meters.
+  - When looking at an ally, the blaster will display a happy emoticon, and while looking at a visible enemy, it displays an angry emoticon, indicating that Juno will either heal or deal damage while shooting at that player.
 - **Pulsar Torpedoes** (RMB), ability: cooldown 10 seconds (lock on); 2 seconds (no lock on), range 40 meters (targeting), duration 2.5 seconds (HoT); 0.35 - 1 seconds (lock-on); 0.38 - 4 seconds (targeting)
   Press Secondary Fire to lock on, then Primary Fire to fire homing projectiles. Heals allies over time and damages enemies.
   - Cooldown starts when the projectiles are fired.

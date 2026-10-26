@@ -17,9 +17,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Creates a beam that locks on to a nearby ally. Ignores barriers and will linger for 1.3 seconds if the target breaks line of sight or moves out of range. Mercy does not need to look at her target to maintain connection.
 - **Caduceus Staff Alt Fire** (RMB), weapon: range 15 meters
   secondary fire Hold to increase an ally's damage inflicted.
-  - In order to amplify a 's damage, Mercy must be boosting the hero when the projectile was fired. After that, it will be boosted even if Mercy stops boosting when it lands.
   - Damage over time abilities, such as Carnage and Incendiary Chaingun, will have their damage amplified if Mercy is boosting the hero whilst the damage is being applied to the enemy. After which, the damage will still be b
   - Mercy gains ultimate charge equal to the damage that she amplifies, except from self-damage.
+  - Mercy's damage boost does not stack with itself.
 - **Caduceus Blaster** (LMB), weapon
   Automatic weapon.
   - Damage per second = 100 while firing (78 overall w/reload)
@@ -28,8 +28,8 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Guardian Angel** (LSHIFT), ability: cooldown 1.5 seconds, range 30 meters
   Fly towards an ally. While in flight, Jump launches you forward, and Crouch launches you upward.
   - Can be used on both living and dead allies.
-  - While flying, Guardian Angel be cancelled mid-flight by pressing the hotkey once more or extended through a Jump or Crouch input:
   - Extending Guardian Angel with a Jump or Crouch input sets its duration to 1 seconds. The extension cannot be canceled.
+  - The cooldown of Guardian Angel starts when its duration ends.
 - **Resurrect** (E), ability: cooldown 30 seconds, range 5.50 meters
   Revive a dead teammate.
   - Eliminated allies leave souls, appearing as glowing yellow balls, at the location of their death. Targeting a soul with Resurrect starts the cast.

@@ -8,9 +8,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 ## Abilities
 - **Xuanwu Staff** (LMB), weapon: duration 0.3 seconds (charge time); 2.5 seconds (max control time)
   Fire a damaging water orb. Hold to control its trajectory and empower its explosion.
-  - Damage per second:
   - You can start controlling an orb after 5.5 meters approximately.
   - While controlling the orb, it has no gravity and will continuously redirect towards the crosshair as long as the orb is within the players field of view volume. other wise it travels towards the players eye position unti
+  - Upon releasing the orb or reaching the maximum control time, the orb it will continue in its current direction and will again be affected by gravity.
 - **Restorative Stream** (RMB), ability: range 20 meters, duration 3 seconds (LoS timeout, passive); 1 second (LoS timeout, manual); 2 seconds (recharge delay)
   Place a passive healing stream on an ally. Hold on the target to manually heal at an improved rate, consuming resource.
   - Manual healing stacks with passive healing, for a total of 75 health per second.

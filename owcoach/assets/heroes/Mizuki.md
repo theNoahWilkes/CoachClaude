@@ -13,8 +13,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - It takes 9 non-critical hits from Spirit Glaive to reach 100% aura (with 8 reaching 96% aura).
 - **Spirit Glaive** (LMB), weapon: range 30 meters, duration 0.5 seconds (damage over time)
   Throw a spinning blade that impacts enemies and rapidly dealing damage.
-  - Damage per second: ( w/ reload)
-  - Spirit Glaive bounces off the environment. It continues bouncing until:
   - Damage over time is unaffected by Amplification Matrix and does not deal critical damage, but can be affected by other damage amplifications.
 - **Healing Kasa** (RMB), ability: cooldown 6 seconds, 2 charges, range 30 meters (initial throw); 12 meters (bounce range from target), duration 0.25 seconds (heal over time duration)
   Throw your hat to heal an ally, bouncing to nearby allies and healing you when it returns.

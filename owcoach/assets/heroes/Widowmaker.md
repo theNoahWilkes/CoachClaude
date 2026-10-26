@@ -14,7 +14,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   Hold for long-ranged sniper weapon.
   - Damage per second: 80 while firing (full charge) (70 overall w/reload)
   - The base damage is 12 and scales linearly to 120. Each percent of power increases the damage by 1.08.
-  - The minimum power required to kill a full health target less than 50 meters away (without armor) with a single headshot:
+  - If fired with less than 50% power, the shots make a softer sound and leave a smaller trail.
 - **Grappling Hook** (LSHIFT), ability: cooldown 10 seconds, range 20 meters
   Launch a hook that pulls you towards a ledge.
   - Grappling Hook can be cancelled by pressing the jump key.

@@ -18,9 +18,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Clobber does not trigger Explorer's Resolve. (Covered in Dirt Major perk only)
 - **Smart Excavator** (LMB), weapon: range 16 meters
   Launch a seismic charge that bursts after a short distance.
-  - Damage per second: while firing ( overall w/reload)
   - Projectile explodes upon hitting an enemy, terrain or upon reaching its maximum range.
   - Enemies hit by the shot are knocked back.
+  - Explosions do not deal self-damage, but will cause a knockback.
 - **Drill Dash** (RMB), ability: cooldown 8 seconds, range 10 meters (regular); 15 meters (burrowed), duration 0.45 seconds (unburrowed); 0.9 seconds (burrowed)
   Dash forward while above or underground, pushing enemies back. The cooldown is accelerated while underground.
   - Cooldown starts when the ability is activated.
@@ -33,9 +33,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Venture receives a movement speed penalty while casting, replaced by a movement speed buff once underground.
 - **Tectonic Shock** (Q), ultimate ability: duration 7 seconds
   Send out damaging shockwaves.
-  - Tectonic Shock transforms Venture's weapon:
   - Tectonic Shock cannot be activated or fired while burrowed.
   - Quick melee/Clobber cannot be used during Tectonic Shock.
+  - Tectonic Shock fires shockwaves that travel along ground.
 
 ## Perks
 - **Deep Burrow** (minor perk): Drill Dash distance is 75% longer while while burrowing.

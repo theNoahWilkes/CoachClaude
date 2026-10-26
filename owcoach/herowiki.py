@@ -31,6 +31,8 @@ BINDS = {"ability 1": "LSHIFT", "ability 2": "E", "ability 3": "SPACE", "primary
 # the part of ability_type after ";;" that names a fire mode (a bind); anything else names a form
 # ("Ability;;Mech", "Weapon;;Nemesis Form") and the bind comes from `key` alone
 FIRE_MODES = ("primary fire", "secondary fire", "hip fire", "ads")
+# binds the wiki page leaves out, from the player (2026-10-26); used only when the page gives no key
+MISSING_KEYS = {("Doctrine", "Shrouded Momentum"): "ability 1", ("Doctrine", "Invigorating Drones"): "ability 2"}
 
 
 def fetch_wikitext(hero: str) -> str:
@@ -45,9 +47,10 @@ def fetch_wikitext(hero: str) -> str:
 
 def _clean(v: str) -> str:
     """Wiki markup -> plain text, roughly: templates reduced to their first argument, links to
-    their label, tags dropped."""
+    their label, tags and footnotes dropped."""
+    v = re.sub(r"<ref[^>/]*/>|<ref[^>]*>.*?</ref>", "", v, flags=re.S)
     v = re.sub(r"\{\{tt\|([^|}]*)\|[^}]*\}\}", r"\1", v)
-    v = re.sub(r"\{\{(?:al|key)\|([^|{}]*)[^{}]*\}\}", r"\1", v)
+    v = re.sub(r"\{\{(?:al|key|ability link)\|([^|{}]*)[^{}]*\}\}", r"\1", v, flags=re.I)
     v = re.sub(r"\{\{#vardefineecho:[^|{}]*\|([^{}]*)\}\}", r"\1", v)   # a value the page also names for reuse
     while re.search(r"\{\{[^{}]*\}\}", v):             # innermost first, so nested ones go too
         v = re.sub(r"\{\{[^{}]*\}\}", "", v)
@@ -70,7 +73,18 @@ def _value(v: str) -> str:
     return "; ".join(parts)
 
 
-def parse_abilities(wikitext: str) -> list[dict]:
+def _detail(raw: str, hero: str) -> str:
+    """One detail bullet as plain text, or "" when cleaning would leave it saying nothing: a number
+    the wiki computes in a template ("Damage per second: {{CalcDPS|...}}") or a lead-in to
+    sub-bullets the note doesn't keep ("It continues bouncing until:")."""
+    raw = raw.replace("{{PAGENAME}}", hero)
+    if re.search(r"\{\{(?!tt\||al\||key\||ability link\||#vardefineecho:|cite )", raw, re.I):
+        return ""
+    d = _clean(raw)
+    return "" if d.endswith(":") else d
+
+
+def parse_abilities(wikitext: str, hero: str = "") -> list[dict]:
     # pages end with "Removed Abilities" / "Removed Perks" sections: not part of the kit
     cut = re.search(r"\n==+\s*Removed[^=]*==+", wikitext)
     if cut:
@@ -90,14 +104,15 @@ def parse_abilities(wikitext: str) -> list[dict]:
         kind, sub = _clean(head), _clean(sub).lower()
         # as Template:Ability details infers it: an ultimate is the ultimate key, a weapon without
         # a key or fire mode is primary fire
-        bind = _clean(f.get("key", "")).lower() or (sub if sub in FIRE_MODES else "")
+        bind = (_clean(f.get("key", "")).lower() or (sub if sub in FIRE_MODES else "")
+                or MISSING_KEYS.get((hero, name), ""))
         if kind.lower().startswith("ultimate"):
             bind = "ultimate"
         elif kind.lower() == "weapon" and not bind:
             bind = "primary fire"
         if sub and sub not in FIRE_MODES:
             kind += f" ({sub})"
-        details = [_clean(b) for b in re.findall(r"^\*\s*([^*\n][^\n]*)", f.get("ability_details", ""), re.M)]
+        details = [_detail(b, hero) for b in re.findall(r"^\*\s*([^*\n][^\n]*)", f.get("ability_details", ""), re.M)]
         out.append({
             "name": name,
             "type": kind,
@@ -172,7 +187,7 @@ def hero_note_path(hero: str) -> Path | None:
 def write_note(hero: str, wikitext: str | None = None, out_dir: Path | None = None) -> Path:
     from datetime import date
     wikitext = wikitext or fetch_wikitext(hero)
-    abilities = parse_abilities(wikitext)
+    abilities = parse_abilities(wikitext, hero)
     if not abilities:
         raise ValueError(f"no abilities found on the wiki page for {hero}")
     p = (out_dir or heroes_dir()) / note_name(hero)

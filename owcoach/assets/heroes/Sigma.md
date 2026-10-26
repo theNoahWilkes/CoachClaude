@@ -25,7 +25,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   Gather a mass of debris and throw it at an enemy to knock them down.
   - Accretion is a channeled ability; the use of primary fire and other abilities is limited, and the ability is interrupted if Sigma is stunned, knocked down or hacked, including their subsidiary effects.
   - Sigma cannot crouch while casting Accretion.
-  - Sigma can damage himself with the splash damage if he is too close to the rock's impact point.https://www.reddit.com/r/Overwatch/comments/1i2rxq9/comment/m7gu7hk/?utm_term=1
+  - Sigma can damage himself with the splash damage if he is too close to the rock's impact point.
 - **Gravitic Flux** (Q), ultimate ability: range 35 meters, duration 5 seconds (targeting); 1 second (activation delay); 2.5 seconds (lift); 0.6 seconds (high gravity)
   Manipulate gravity to lift enemies into the air and slam them back down.
   - Gravitic Flux's targeting area is cylindrical: Its bottom is a flat 8m radius circle situated 5.5m below the targeted (ground) location and the upper limit of the area is defined by a 15.5m radius sphere centered on this

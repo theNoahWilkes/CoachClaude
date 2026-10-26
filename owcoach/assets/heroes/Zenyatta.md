@@ -12,12 +12,8 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Vertical component of the knockback is reduced the further the target is.
 - **Orb of Destruction** (LMB), weapon
   Energy projectile weapon.
-  - Damage per second: while firing ( overall w/reload)
-  - Damage per second: (w/ discord) ( overall w/reload)
 - **Orb of Destruction Alt Fire** (RMB), weapon
   Charge to release more projectiles.
-  - Damage per second: while firing ( overall w/reload)
-  - Damage per second: while firing (w/ discord) ( overall w/reload)
 - **Orb of Harmony** (LSHIFT), ability: range 40 meters, duration 3 seconds (if out of sight)
   Launch this orb at an ally to heal them.
   - Orb of Harmony remains on the target indefinitely, while they stay within line of sight of Zenyatta.

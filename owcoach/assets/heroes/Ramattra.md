@@ -28,9 +28,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Nemesis Form is not interrupted by crowd control.
 - **Pummel** (LMB), weapon (nemesis form): range 10 meters
   Punch, creating a wave of piercing energy with every swing.
-  - Damage per second:
   - Exclusive to Nemesis form.
   - Punches pierce enemies and barriers.
+  - Pummel is not reflected when blocked by Deflect.
 - **Block** (RMB), ability (nemesis form): cooldown 0.5 seconds, duration 0.2 seconds (min)
   Significantly reduces damage taken from the front and reduces movement speed.
   - Exclusive to Nemesis form.

@@ -14,13 +14,11 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Incendiary Chaingun** (LMB), weapon: duration 4 seconds (damage over time)
   Automatic weapon that ignites enemies on repeated impacts.
   - A.K.A "Gunny"
-  - Damage per second:
-  - Gunny and Cha-Cha can be fired one at a time or simultaneously:
 - **Volatile Chaingun** (RMB), weapon
   Automatic weapon that deals critical damage to burning enemies.
   - A.K.A "Cha-Cha"
   - Fortify does not prevent critical hits to an ignited Orisa.
-  - Hitting enemies that are burning from other abilities (such as Ashe's , Torbjörn's or Anran's ) will also cause Cha-Cha to deal critical damage.
+  - Hitting enemies that are burning from other abilities (such as Ashe's Dynamite, Torbjörn's Molten Core or Anran's Ignition) will also cause Cha-Cha to deal critical damage.
 - **Overrun** (LSHIFT), ability: cooldown 6 seconds, range 4.4 meters (charge, min); 28 meters (charge, max); 6.5 meters (stomp), duration 0.32 seconds (charge, min); 2 seconds (charge, max); 0.6 seconds (stomp) ; 1 second (knockdown)
   Charge forward to stomp and launch enemies. You are unstoppable while charging.
   - Cooldown starts when the ability ends.

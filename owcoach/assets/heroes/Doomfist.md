@@ -24,11 +24,11 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Seismic Slam** (LSHIFT), ability: cooldown 6.5 seconds
   Leap forward and smash the ground.
   - Seismic Slam features a micro-lock that will fully stop a target's movement if they are airborne, but will do virtually nothing to a grounded target.
-  - Seismic Slam can climb both up & down surfaces within its vertical range, similar to .
+  - Seismic Slam can climb both up & down surfaces within its vertical range, similar to Earthshatter.
   - Doomfist's momentum is retained if the ability is cancelled by Sleep Dart or Hack.
 - **Power Block** (E), ability: cooldown 7 seconds, duration 0.34 seconds (min) ; 2.5 seconds (max)
   Protect yourself from frontal attacks. Blocking heavy damage empowers Rocket Punch.
-  - After mitigating 100 or more damage, the cooldown of is immediately reset and the next Rocket Punch is empowered.
+  - After mitigating 100 or more damage, the cooldown of Rocket Punch is immediately reset and the next Rocket Punch is empowered.
   - Power Block is a channeled ability; the ability is interrupted when Doomfist is affected by stunned, knocked down or hacked, including subsidiary effects.
   - Damage is blocked if the horizontal angle between the direction Doomfist is facing and the direction from the impact location to its source is less than ~53 degrees.
 - **Meteor Strike** (Q), ultimate ability: duration 4 seconds (targeting, max) ; 3 seconds (slow)

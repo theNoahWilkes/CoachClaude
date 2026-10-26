@@ -17,9 +17,9 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Damage per second: 175 while firing (100% charge) (134.61 overall w/reload)
 - **Particle Cannon Alt Fire** (RMB), weapon
   Energy grenade launcher.
-  - Damage per second: 55 while firing (0% charge) ( overall w/reload)
-  - Damage per second: 110 while firing (100% charge ( overall w/reload)
   - Grenades can still be fired even with less than 25 ammo, dealing full damage.
+  - The projectile can be destroyed by Defense Matrix, Kinetic Grasp, Javelin Spin, Power Matrix and Kekkai Sanctuary and reflected by Deflect before it impacts, but the impact explosion is unaffected.
+  - Amplification Matrix affects all damage dealt, if the projectile passes through it. Splash damage alone going through is not amplified.
 - **Particle Barrier** (LSHIFT), ability: cooldown 12 seconds, 2 charges, duration 2.25 seconds
   Create a damage barrier around you.
   - Charges are shared with Projected Barrier. The charge cooldown of the next charge is set depending on which ability was used.
@@ -28,7 +28,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
 - **Projected Barrier** (E), ability: cooldown 9 seconds, 2 charges, range 30 meters, duration 2.25 seconds
   Create a damage barrier around an ally.
   - Charges are shared with Particle Barrier. The charge cooldown of the next charge is set depending on which ability was used.
-  - Projected Barrier behaves identically to Particle Barrier, excluding following differences:
 - **Graviton Surge** (Q), ultimate ability: duration 4 seconds
   Launch a gravity well that pulls enemies to it.
   - All movement abilities are disabled within the effect of Graviton Surge.

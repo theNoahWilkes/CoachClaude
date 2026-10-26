@@ -13,7 +13,6 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - When an enemy has their ultimate, this icon 24x24px shows up above them.
 - **Machine Pistol** (LMB), weapon
   Short-range automatic weapon.
-  - Damage per second:
   - Maximum spread is reached after 10 shots.
   - If primary fire is released there is a 0.16 seconds recovery period before it can be used again.
 - **Hack** (RMB), ability: cooldown 6 seconds (heroes); 3 seconds (non-heroes), range 15 meters, duration 8 seconds (reveal, heroes); 1.0 seconds (ability disable, heroes); 45 seconds (health packs); 10 seconds (disable, objects); 3 seconds (disable, B.O.B.)

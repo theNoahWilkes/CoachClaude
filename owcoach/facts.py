@@ -54,13 +54,25 @@ def slot_names(hero: str | None, nslots: int, learned: list[float | None], note_
     not its place), so the note's HUD-bound abilities (LSHIFT, E, SPACE, F) fill the first slots in
     that order. A later slot takes the one ability left when only one is, else the unassigned
     ability whose cooldown is nearest its learned one (within CD_TOL; ties go to the HUD-bind
-    order), else stays "slot N" rather than get a wrong name, as on a true tie. With fewer slots
-    than HUD-bound abilities (a slot not read) the layout is unknown and only the cooldowns name."""
+    order), else stays "slot N" rather than get a wrong name, as on a true tie.
+
+    The order isn't used when the slots read don't fit it: fewer slots than HUD-bound abilities (a
+    slot not read), or a learned cooldown that only another slot's ability has, or one longer than
+    its own slot's (a learned cooldown runs short, never long). Then only the cooldowns name."""
     abil = note_abilities(note_path)
     bound = [a for a in abil if a["bind"] in HUD_BINDS]
     names: list[str | None] = [None] * nslots
     free = list(abil)
-    if len(bound) <= nslots:
+
+    def fits(j: int, cd: float) -> bool:
+        own = bound[j]["cooldown"] if j < len(bound) else None
+        if own and cd > own + CD_TOL:
+            return False
+        near = [k for k, a in enumerate(bound) if a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL]
+        others = [a for a in abil if a not in bound and a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL]
+        return not near or j in near or bool(others)
+
+    if len(bound) <= nslots and all(fits(j, cd) for j, cd in enumerate(learned[:nslots]) if cd):
         for j, a in enumerate(bound):
             names[j] = a["name"]
             free.remove(a)

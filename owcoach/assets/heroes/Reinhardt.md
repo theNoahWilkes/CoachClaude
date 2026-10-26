@@ -13,7 +13,7 @@ binds them to, then any other ability with a cooldown (Mizuki's Healing Kasa on 
   - Rocket Hammer knocks back enemies in the direction of the swing.
 - **Barrier Field** (RMB), ability: cooldown 5 seconds (destroyed)
   Hold secondary fire to deploy a frontal energy barrier.
-  - Using Fire Strike, Charge or automatically puts down the barrier to cast the ability. To use Rocket Hammer, the barrier must be first manually released.
+  - Using Fire Strike, Charge or Earthshatter automatically puts down the barrier to cast the ability. To use Rocket Hammer, the barrier must be first manually released.
   - Barrier health regenerates at a rate of 150 per second after being down for 2 seconds.
   - Barrier Field is a channeled ability, If Reinhardt is hacked, slept, stunned and knocked down, it will be released.
 - **Charge** (LSHIFT), ability: cooldown 7 seconds, range 50.2 meters, duration 3 seconds (charge, max); 0.3 seconds (charge, min); 0.65 seconds (stun on wall hit)
