@@ -11,8 +11,12 @@ threats, the kill cam.
 
 Deterministic: assembled from the per-death HUD read (0.1 s), the whole-game 2 fps series,
 hud_game's presses and low episodes, the timeline and the hero note. Names come from the hero
-note's abilities matched to the learned cooldown length of each HUD slot (the HUD shows ability
-1 / 2 / 3 = LSHIFT / E / SPACE left to right; the cooldown match guards against a rebinding).
+note's abilities in HUD order (the HUD shows ability 1 / 2 / 3 = LSHIFT / E / SPACE left to right,
+then the rest, like Mizuki's Healing Kasa on RMB), whatever the player binds them to. The learned
+cooldown only names a slot the note's order can't account for: it's the first countdown read after
+a press, so it runs short for an ability whose cooldown starts on use (Katashiro Return reads 7-11 s
+of its 12) or that holds charges (Healing Kasa reads 1-4 s of its 6), and matching on it named
+Mizuki's slots wrong in most matches.
 """
 from __future__ import annotations
 
@@ -46,27 +50,42 @@ def note_abilities(path: str | Path | None) -> list[dict]:
 
 
 def slot_names(hero: str | None, nslots: int, learned: list[float | None], note_path=None) -> list[str]:
-    """One name per HUD slot. A slot with a learned cooldown takes the unassigned note ability
-    whose cooldown is nearest (within CD_TOL; ties go to the HUD-bind order). A slot without
-    one takes the next ability in bind order, but only among the note's HUD-bound abilities,
-    so a slot the note can't account for stays "slot N" rather than get a wrong name."""
+    """One name per HUD slot. The HUD order is fixed per hero (rebinding a key changes its label,
+    not its place), so the note's HUD-bound abilities (LSHIFT, E, SPACE, F) fill the first slots in
+    that order. A later slot takes the one ability left when only one is, else the unassigned
+    ability whose cooldown is nearest its learned one (within CD_TOL; ties go to the HUD-bind
+    order), else stays "slot N" rather than get a wrong name, as on a true tie.
+
+    The order isn't used when the slots read don't fit it: fewer slots than HUD-bound abilities (a
+    slot not read), or a learned cooldown that only another slot's ability has, or one longer than
+    its own slot's (a learned cooldown runs short, never long). Then only the cooldowns name."""
     abil = note_abilities(note_path)
     bound = [a for a in abil if a["bind"] in HUD_BINDS]
     names: list[str | None] = [None] * nslots
     free = list(abil)
+
+    def fits(j: int, cd: float) -> bool:
+        own = bound[j]["cooldown"] if j < len(bound) else None
+        if own and cd > own + CD_TOL:
+            return False
+        near = [k for k, a in enumerate(bound) if a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL]
+        others = [a for a in abil if a not in bound and a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL]
+        return not near or j in near or bool(others)
+
+    if len(bound) <= nslots and all(fits(j, cd) for j, cd in enumerate(learned[:nslots]) if cd):
+        for j, a in enumerate(bound):
+            names[j] = a["name"]
+            free.remove(a)
+        if len(free) == 1 and names.count(None) == 1:
+            names[names.index(None)] = free.pop()["name"]
     for j in range(nslots):
         cd = learned[j] if j < len(learned) else None
-        if not cd:
+        if names[j] is not None or not cd:
             continue
-        cands = [a for a in free if a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL]
-        if cands:
-            hit = min(cands, key=lambda a: (abs(a["cooldown"] - cd), a["rank"]))
-            names[j] = hit["name"]
-            free.remove(hit)
-    for j in range(nslots):
-        if names[j] is None and j < len(bound) and bound[j] in free:
-            names[j] = bound[j]["name"]
-            free.remove(bound[j])
+        cands = sorted((abs(a["cooldown"] - cd), a["rank"], i) for i, a in enumerate(free)
+                       if a["cooldown"] and abs(a["cooldown"] - cd) <= CD_TOL)
+        if cands and (len(cands) == 1 or cands[0][:2] != cands[1][:2]):   # a true tie stays unnamed
+            names[j] = free.pop(cands[0][2])["name"]
     return [n or f"slot {j + 1}" for j, n in enumerate(names)]
 
 

@@ -352,13 +352,21 @@ found two.
      without keybinds. The focus is graded from three factual rates (fights started with the
      escape cooling from a travel press; low episodes with it ready and pressed; low episodes
      with it cooling that ended in death).
-   - **Hero notes** (`herowiki.py`, `owcoach hero <Name>`): the Overwatch wiki's page
+   - **Hero notes** (`herowiki.py`, `owcoach hero <Name>` or `--all`): the Overwatch wiki's page
      (overwatch.fandom.com, MediaWiki API, wikitext) parsed into `<profile>/heroes/<Hero>.md`:
      each ability with its default bind (the wiki's "ability 1" = LSHIFT, "ability 2" = E,
      "ability 3" = SPACE), cooldown, charges, official description and a few details ("Dash is
-     horizontal only", "the platform blocks line of sight"), plus perks. `packet.json` ->
-     `hero_notes` lists the ones that exist and the briefs pass the path. Noah runs
-     `owcoach hero` rarely (a new hero, a rework), not as part of coaching.
+     horizontal only", "the platform blocks line of sight"), plus perks. owcoach ships a note for
+     every hero (`owcoach/assets/heroes`, refreshed with `owcoach hero --all --bundle`) and seeds the
+     profile from it: a missing note, or one fetched before the bundled copy, is replaced. Each
+     note says when it was fetched. `packet.json` -> `hero_notes` lists them and the briefs pass
+     the path. Noah runs `owcoach hero` rarely (a new hero, a rework), not as part of coaching.
+   - **Slot names** (`facts.slot_names`): the HUD shows a hero's LSHIFT / E / SPACE abilities left
+     to right whatever the binds, so the note's HUD-bound abilities name the first slots in that
+     order; a slot after them takes the one ability left, or the one whose cooldown is nearest the
+     learned one. The learned cooldown is the first countdown after a press, which runs short for
+     an ability whose cooldown starts on use (Katashiro Return: 7-11 of 12 s) or holds charges
+     (Healing Kasa: 1-4 of 6 s); naming by it alone swapped Mizuki's slots in most matches.
    - Not done: ult charge % from the existing `ult` crop (same digit reader); the enemy/ally
      HP of targets; a cheaper 10 s overview first pass that reads the 5 s cells only in fights.
 
