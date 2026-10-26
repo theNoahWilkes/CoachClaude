@@ -24,8 +24,8 @@ shape, since `owcoach focus` parses it:
 ```
 # Focus proposal, <YYYY-MM-DD>
 
-After <session date and record>. Pick with `owcoach focus N` (two numbers for two habits), or
-`owcoach focus --set "..."` for your own wording. What you don't pick stays listed as an option.
+After <session date and record>. Turn options on or off on the page's Focus page (up to three;
+one or two is best), or pick with `owcoach focus N`. What you don't pick stays listed as an option.
 
 ## 1. Keep: <short title>
 **<the current focus wording, verbatim>**
@@ -49,6 +49,8 @@ Rules:
 - Two to four more options, from the recurring patterns, the session's moments, and the "Focus
   options" already in the lessons file. Each is one habit with a trigger the player can notice in
   the moment and an action; not "position better".
+- An option the lessons file already has (active or under "Focus options") keeps that wording
+  verbatim. The page lists items by wording, so a reworded one shows up twice.
 - The first line under each heading is the bold wording and nothing else. That's what the
   lessons file will carry.
 - Evidence is counts and ids, this session and before. Say what counts as a test next session so

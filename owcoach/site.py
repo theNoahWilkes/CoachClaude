@@ -23,6 +23,7 @@ from coachlib.launcher import write_link
 from coachlib.site import num, slug, write
 from coachlib.version import version
 
+from .compress import state as compress_state
 from .config import library, profile_dir
 
 PAGE_NAME = "coaching.html"
@@ -34,7 +35,7 @@ COLUMNS = [{"key": "played", "label": "played", "align": "left"}, {"key": "map",
            {"key": "hero", "label": "hero", "align": "left"}, {"key": "clock", "label": "clock"},
            {"key": "deaths", "label": "deaths"}, {"key": "d10", "label": "D/10"}, {"key": "dead_pct", "label": "dead %"},
            {"key": "h10", "label": "heal/10"}, {"key": "dmg10", "label": "dmg/10"}, {"key": "focus", "label": "focus"},
-           {"key": "coached", "label": "coached"}]
+           {"key": "coached", "label": "coached"}, {"key": "clip", "label": "clip", "align": "left"}]
 STOPLIGHT_RE = re.compile(r"^\s*[-*]\s*(🟢|🟡|🔴|⚪)", re.M)     # a report's "## Focus" lines (ADR 0012)
 # A clock (5:18) or a moment id (d04, u02, k07) in a report, optionally after a match (m03) in a
 # session summary. Not inside a link's text or target, not part of a longer word or time.
@@ -182,6 +183,7 @@ def _game(gdir: Path, session: dict) -> dict:
         if (pk_dir / "moments.m3u").exists():
             g["links"].append({"label": "moments.m3u (VLC)", "href": _rel(pk_dir / "moments.m3u")})
         g["links"].append({"label": "match.mp4", "href": g["video"], "blank": True})
+    clip_cell = {"compressed": "compressed", "big": "lossless"}.get(compress_state(gdir) or "", "")
     if not pk:
         g["title"] = " · ".join(str(x) for x in (mj.get("map") or gdir.name, (mj.get("result") or "").capitalize()) if x)
         g["nav"] = " · ".join(str(x) for x in (mj.get("map") or gdir.name, mj.get("hero_final")) if x)
@@ -189,7 +191,7 @@ def _game(gdir: Path, session: dict) -> dict:
         g["warnings"].append("No packet for this game (not processed, or no match found in the clip).")
         g["cells"] = {"played": session["date"], "map": {"text": mj.get("map") or gdir.name, "href": f"#g/{g['id']}"},
                       "mode": mj.get("mode") or "", "result": {"text": mj.get("result") or "", "cls": f"res-{mj.get('result')}"},
-                      "hero": mj.get("hero_final") or "", "coached": "no packet"}
+                      "hero": mj.get("hero_final") or "", "coached": "no packet", "clip": clip_cell}
         return g
     game, counts, stats = pk["game"], pk.get("counts") or {}, pk.get("stats") or {}
     hero_names: list[str] = []
@@ -218,7 +220,7 @@ def _game(gdir: Path, session: dict) -> dict:
                   "map": {"text": game.get("map") or gdir.name, "href": f"#g/{g['id']}"}, "mode": game.get("mode") or "",
                   "result": {"text": result if result != "none" else "", "cls": f"res-{result}"}, "hero": hero,
                   "clock": stats.get("clock") or "", "deaths": num(counts.get("deaths")), "d10": num(counts.get("deaths_per_10min"), 1),
-                  "dead_pct": num(dead_pct, 1), "h10": num(per10.get("H")), "dmg10": num(per10.get("DMG")), "coached": "✓" if coached else ""}
+                  "dead_pct": num(dead_pct, 1), "h10": num(per10.get("H")), "dmg10": num(per10.get("DMG")), "coached": "✓" if coached else "", "clip": clip_cell}
     g["tables"].append(_stats_table(m))
     hud = pk.get("hud_game") or {}
     g["timeline"] = {
@@ -331,6 +333,63 @@ def _session(sdir: Path) -> dict | None:
     return s
 
 
+def day_actions(day: dict) -> list[dict]:
+    """One button per day: compress every match of the day that is still a big lossless copy.
+    A day with nothing left to compress gets a line with its size instead."""
+    from .compress import SIZE_RATIO, estimate_min
+    lib = library()
+    dirs = [lib / s["name"] / g["dir"] for s in day["sessions"] for g in s["games"]]
+    big = [d for d in dirs if compress_state(d) == "big"]
+    if not big:
+        small = [d for d in dirs if compress_state(d) == "compressed"]
+        gb = sum((d / "match.mp4").stat().st_size for d in small) / 1e9
+        return [{"text": f"<span class=dim>{gb:.1f} GB (compressed)</span>"}] if small else []
+    gb = sum((d / "match.mp4").stat().st_size for d in big) / 1e9
+    mins = max(1, round(sum(estimate_min(d) for d in big)))
+    n = f"{len(big)} match{'es' if len(big) != 1 else ''}"
+    return [{"note": f"Compressing {n} would take about {mins} min and save {gb * (1 - SIZE_RATIO):.0f} GB.",
+             "label": "Compress this day", "action": "compress", "args": {"dirs": [_rel_dir(d) for d in big]},
+             "busy": "Compressing…", "keys": [_rel_dir(d) for d in big],
+             "cmd": f"owcoach compress {day['date']}"}]
+
+
+def _rel_dir(d: Path) -> str:
+    return d.relative_to(library()).as_posix()
+
+
+def focus_page() -> dict:
+    """The Focus page (ADR 0014): every focus item with an on/off toggle, the coach's new ideas
+    marked, a box for the player's own, and a nudge at the cap."""
+    from .focus import MAX_ACTIVE, items
+    try:
+        its = items()
+    except (OSError, ValueError):
+        its = []
+    n_on = sum(i["active"] for i in its)
+    n_new = sum(i["new"] for i in its)
+    acts = []
+    for i in its:
+        w = html.escape(i["wording"])
+        badge = '<span class="flag">new from coaching</span> ' if i["new"] else ""
+        ev = "".join(f"<br><small class=dim>{html.escape(x.lstrip('-* '))}</small>" for x in i.get("evidence") or [])
+        w += "".join(f"<br>{html.escape(a)}" for a in i.get("also") or [])
+        acts.append({"text": f"{badge}<b>{w}</b>" + (f" <small class=dim>{html.escape(i['note'])}</small>" if i["note"] and not ev else "") + ev,
+                     "label": "Active" if i["active"] else "Off", "on": i["active"], "action": "focus",
+                     "args": {"wording": i["wording"], "on": not i["active"]},
+                     "title": "Click to turn it off" if i["active"] else "Click to make it active",
+                     "cmd": f'owcoach focus --{"off" if i["active"] else "on"} "{i["wording"]}"'})
+    acts.append({"input": "add", "placeholder": "your own: when <trigger>, <action>", "label": "Add, active",
+                 "action": "focus", "cmd": 'owcoach focus --add "{}"'})
+    if n_on >= MAX_ACTIVE:
+        intro = (f'<span class="nag">{n_on} focus items are active, the most there can be. One or two work better: '
+                 "the coach grades each one every match, and it's hard to think about three things in a fight.</span>")
+    elif n_on:
+        intro = f"{n_on} active. The coach grades each active item every match. Up to {MAX_ACTIVE} can be on; one or two work best."
+    else:
+        intro = "No active focus. Turn one on, or add your own."
+    return {"id": "focus", "title": "Focus", "nav": f"Focus ({n_new} new)" if n_new else "Focus", "intro": intro, "actions": acts}
+
+
 def collect() -> dict:
     """The whole library as the renderer's tree."""
     lib, prof = library(), profile_dir()
@@ -352,12 +411,9 @@ def collect() -> dict:
                                     for h, v in by_hero.items()]})
     except Exception:            # history is optional for the page
         pass
-    focus = _read(prof / "focus_proposal.md")
-    pages = [{"id": "lessons", "title": "Lessons", "md": _read(prof / "lessons.md")}]
-    if focus:
-        pages.append({"id": "focus", "title": "Focus proposal", "nav": "Focus proposal (waiting)",
-                      "intro": "Pick with <code>owcoach focus N</code> (two numbers for two habits), or <code>owcoach focus --set \"...\"</code> for your own wording.",
-                      "md": focus})
+    focus = focus_page()
+    pages = [focus, {"id": "lessons", "title": "Lessons", "md": _read(prof / "lessons.md")}]
+    new_focus = focus["nav"] != "Focus"
     other = None
     try:
         from coachlib.config import data_dir
@@ -371,8 +427,8 @@ def collect() -> dict:
         "home_title": f"{player} · Overwatch 2 coaching",
         "home_sub": f"{len(allg)} games in {len([s for s in sessions if s['kind'] == 'session'])} sessions, {sum(1 for g in allg if g['coached'])} coached · "
                     f"library <code>{lib}</code> · profile <code>{prof}</code> · built {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-        "banner": "A focus proposal is waiting: see [Focus proposal](#focus), then `owcoach focus N`." if focus else None,
-        "columns": COLUMNS, "days": [days[k] for k in sorted(days, reverse=True)], "pages": pages, "tables": tables,
+        "banner": "The coach has a new focus idea: see [Focus](#focus)." if new_focus else None,
+        "columns": COLUMNS, "days": [dict(days[k], actions=day_actions(days[k])) for k in sorted(days, reverse=True)], "pages": pages, "tables": tables,
         "notes": ["Reports and notes are the coach's text, unedited. Stills and clips are read from the library next to this file; nothing is copied.",
                   "Clips are the recording's own HEVC HDR stream. Edge and Chrome play them with the HEVC extension; colours look flat on an SDR "
                   "screen. The VLC link plays the moments properly."],

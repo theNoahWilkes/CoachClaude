@@ -28,8 +28,10 @@ A trigger and the action to take on it: "when X happens, do Y."
 _Avoid_: tip, goal
 
 **Focus**:
-The one habit the player is working on right now. There is at most one focus; there may be none.
-_Avoid_: focus item, current habits, goal
+The habits the player is working on right now, each a **focus item** the player turns on or off
+on the page. One or two is best and three is the most ([ADR 0014](docs/adr/0014-up-to-three-focus-items.md));
+there may be none. An item turned off stays listed and can be turned on again.
+_Avoid_: current habits, goal
 
 **Retired focus**:
 A focus the player has moved past. It is no longer graded, but it is remembered so that a
@@ -135,6 +137,12 @@ only view of the images.
 **Writer**:
 The process that judges one match from its reader notes and the packet and writes the match's
 report and `notes/summary.md`.
+
+**Compress**:
+Re-encode a match's clip (`match.mp4`) on the GPU so it keeps about a third of its size, for a
+match the player wants to keep but not review closely again. The default clip is a lossless
+stream copy.
+_Avoid_: archive, shrink, transcode
 
 **Driver**:
 `owcoach coach`: the code that cuts matches into pieces, fills the briefs, runs the processes
