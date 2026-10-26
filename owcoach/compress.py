@@ -23,7 +23,8 @@ from .config import cache_for, library
 from .probe import cuda_decode_ok, nvenc_ok, probe
 
 CROP_RE = re.compile(r"crop (\d+):(\d+):(\d+):(\d+)")
-SPEED = 3.5            # x realtime, NVENC p3 on a 3080 Ti (2026-10-25)
+SPEED = 2.3            # x realtime: re-encoding a header-cropped clip on N's 3080 Ti (2026-10-26); used until this machine has timed one
+TIMES = ".compress-times.json"   # in the library: the last runs' clip seconds and wall seconds
 TOLERANCE_S = 0.5      # one GOP
 SIZE_RATIO = 0.3       # the encode's size over the header-cropped copy's (~1/3.3, 2026-10-25)
 
@@ -89,6 +90,7 @@ def compress(gdir: Path) -> str:
     t0 = time.monotonic()
     subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-y", *pre, "-i", str(clip), *venc, str(tmp)],
                    check=True)
+    wall = time.monotonic() - t0
     got = probe(tmp)["duration"]
     if abs(got - meta["duration"]) > TOLERANCE_S:
         tmp.unlink(missing_ok=True)
@@ -104,11 +106,31 @@ def compress(gdir: Path) -> str:
     mj["clip_video"] = ("crop {}:{}:{}:{} cq {}".format(*keep, CQ) if keep else f"cq {CQ}")
     (gdir / "match.json").write_text(json.dumps(mj, indent=1))
     after = clip.stat().st_size
+    _record(meta["duration"], wall)
     return (f"{name}: compressed {before / 1e9:.1f} GB -> {after / 1e9:.1f} GB "
-            f"in {(time.monotonic() - t0) / 60:.0f} min")
+            f"in {wall / 60:.1f} min ({meta['duration'] / wall:.1f}x realtime)")
+
+
+def speed() -> float:
+    """x realtime: the median of this machine's last compresses, else SPEED."""
+    try:
+        runs = json.loads((library() / TIMES).read_text(encoding="utf-8"))
+        rates = sorted(r["clip_s"] / r["wall_s"] for r in runs if r.get("wall_s"))
+    except (OSError, ValueError, KeyError, TypeError):
+        rates = []
+    return rates[len(rates) // 2] if rates else SPEED
+
+
+def _record(clip_s: float, wall_s: float) -> None:
+    p = library() / TIMES
+    try:
+        runs = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        runs = []
+    p.write_text(json.dumps((runs + [{"clip_s": round(clip_s, 1), "wall_s": round(wall_s, 1)}])[-10:]), encoding="utf-8")
 
 
 def estimate_min(gdir: Path) -> float:
-    """Minutes the encode should take, from the clip's length."""
+    """Minutes the encode should take, from the clip's length and this machine's measured speed."""
     d = _match_json(gdir).get("clip_duration") or 0
-    return d / SPEED / 60
+    return d / speed() / 60

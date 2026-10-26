@@ -349,6 +349,7 @@ def day_actions(day: dict) -> list[dict]:
     n = f"{len(big)} match{'es' if len(big) != 1 else ''}"
     return [{"note": f"Compressing {n} would take about {mins} min and save {gb * (1 - SIZE_RATIO):.0f} GB.",
              "label": "Compress this day", "action": "compress", "args": {"dirs": [_rel_dir(d) for d in big]},
+             "busy": "Compressing…", "keys": [_rel_dir(d) for d in big],
              "cmd": f"owcoach compress {day['date']}"}]
 
 

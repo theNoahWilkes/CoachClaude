@@ -26,7 +26,8 @@ collect_hots) decides the content and hands over this shape:
            CLI command, copied when the page is opened as a file), title (hover text) | None,
            input (an args key filled from a text box; cmd has {} where the text goes) | None,
            placeholder | None, text (html before the button) | None, on (bool: a toggle that is on),
-           note (html in italics after the button, which then leads the row) | None
+           note (html in italics after the button, which then leads the row) | None,
+           busy (label while any of `keys`, the server's job keys, is queued or running) | None
 
 Buttons: an action is a button. Served by coachlib.serve, the page carries a token and a click
 POSTs to /api/<action>; opened as a file, a click copies `cmd` to the clipboard instead.
@@ -154,7 +155,8 @@ def actions_html(acts: list[dict] | None) -> str:
     for a in acts or []:
         attrs = "" if not a.get("action") else (f'class="act{" on" if a.get("on") else ""}" data-action="{e(a["action"])}" data-args="{e(json.dumps(a.get("args") or {}))}" '
                  f'data-cmd="{e(a.get("cmd") or "")}"' + (f' title="{e(a["title"])}"' if a.get("title") else "")
-                 + (f' data-input="{e(a["input"])}"' if a.get("input") else ""))
+                 + (f' data-input="{e(a["input"])}"' if a.get("input") else "")
+                 + (f' data-busy="{e(a["busy"])}" data-keys="{e(json.dumps(a.get("keys") or []))}"' if a.get("busy") else ""))
         box = f'<input type="text" placeholder="{e(a.get("placeholder") or "")}">' if a.get("input") else ""
         text = f'<span>{a["text"]}</span>' if a.get("text") else ""
         btn = f'<button {attrs}>{e(a["label"])}</button>' if a.get("action") else ""
@@ -394,7 +396,8 @@ JS = """
     if(!API){copy(cmd);toast('Copied: '+cmd+'\\nPaste it in a terminal. Opened from the CoachClaude desktop shortcut, this button does it for you.');return;}
     b.disabled=true;
     post(b.getAttribute('data-action'),args)
-      .then(function(j){toast(j.message||'Done.',!j.ok);if(j.ok&&j.reload)setTimeout(function(){location.reload();},1200);else b.disabled=false;poll();})
+      .then(function(j){toast(j.message||'Done.',!j.ok);if(j.ok&&j.reload)setTimeout(function(){location.reload();},1200);
+        else if(j.ok&&b.getAttribute('data-busy')){b.textContent=b.getAttribute('data-busy');}else b.disabled=false;poll();})
       .catch(function(){toast('The CoachClaude server has stopped. Open it again from the desktop shortcut.',true);b.disabled=false;});
   }
   document.addEventListener('click',function(e){var b=e.target.closest('button.act');if(b)act(b);});
@@ -408,6 +411,10 @@ JS = """
       el.innerHTML='';if(busy){el.appendChild(document.createTextNode('Working on '+(q.current||'…')+((q.queued||[]).length?' · queued:':'')));
         (q.queued||[]).forEach(function(j){var a=document.createElement('a');a.textContent=j.label+' ✕';a.title='Cancel this one';
           a.onclick=function(){post('cancel',{key:j.key}).then(function(r){toast(r.message,!r.ok);poll();});};el.appendChild(a);});}
+      var keys=[q.current_key].concat((q.queued||[]).map(function(x){return x.key;}));
+      document.querySelectorAll('button.act[data-busy]').forEach(function(b){   // a running job's button stays locked
+        var mine=JSON.parse(b.getAttribute('data-keys')||'[]').some(function(k){return keys.indexOf(k)>=0;});
+        if(mine){b.disabled=true;b.textContent=b.getAttribute('data-busy');}});
       if(wasBusy&&!busy){toast((q.log||[]).slice(-1)[0]||'Done.');setTimeout(function(){location.reload();},1500);}
       wasBusy=busy;pollT=setTimeout(poll,busy?5000:60000);
     }).catch(function(){pollT=setTimeout(poll,60000);});

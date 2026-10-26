@@ -100,6 +100,7 @@ class Jobs:
     def status(self) -> dict:
         with self.lock:
             return {"current": self.current[1] if self.current else None,
+                    "current_key": self.current[0] if self.current else None,
                     "queued": [{"key": k, "label": l} for k, l, _ in self.queue], "log": list(self.log)}
 
 
