@@ -30,7 +30,7 @@ Installed with `pip install "coachclaude[hots]"` the command is `hotscoach`; fro
 Config: the "hots" section of ~/.config/coachclaude/config.json (shared with the Overwatch
 coach; an old ~/.config/hotscoach/config.json is read and migrated by `setup`). Data:
 ~/.local/share/coachclaude/hots/ (games.db, lessons-<player>.md, games/<session>/<game>/ with
-analysis.json, timeline.txt and the coach's coaching.md, coaching.html). Env vars HOTS_PLAYER,
+analysis.json, timeline.txt, map.json, map.svg and the coach's coaching.md, coaching.html). Env vars HOTS_PLAYER,
 HOTS_REPLAY_DIR, HEROPROTOCOL_PATH, HOTSCOACH_DB and HOTSCOACH_DATA override it.
 """
 import argparse, glob, hashlib, importlib.util, io, json, math, os, re, sqlite3, sys
@@ -55,6 +55,8 @@ OBJECTIVE_RE = re.compile(r"DragonKnightActivated|Altar Captured|Shrine Captured
                           r"SoulEatersSpawned|NukesSpawned|Tribute|RavenCurse|Immortal|"
                           r"GardenTerror|SkyTempleActivated|HauntedMinesGolemsSpawned|Doubloon|BraxisWave|BraxisHoldoutMapEventComplete|Payload|Beacon|CapturePointComplete")
 CARRY_DROP_RE = re.compile(r"Dropped")   # e.g. WarheadJunctionNukeDropped
+BUILDINGS = {"TownTownHallL2": "fort", "TownTownHallL3": "keep", "TownCannonTowerL2": "tower",
+             "TownCannonTowerL3": "tower", "TownMoonwellL2": "well", "TownMoonwellL3": "well", "KingsCore": "core"}
 ARAM_MAPS = {"Silver City", "Industrial District", "Braxis Outpost", "Lost Cavern"}  # excluded from trend by default
 
 
@@ -266,6 +268,7 @@ class Game:
 
         self.deaths, self.objectives, self.drops, self.xp = [], [], [], {}
         self.camps, self.structures, self.levels = [], [], {}
+        self.towns, self.camp_spots = [], []    # (team, lane, x, y) and (x, y), for the death map
         town_team = {ints(e, b"TownID")[0]: ints(e, b"Team")[0] - 1 for e in stats
                      if e["m_eventName"] == b"TownStructureInit" and ints(e, b"TownID") and ints(e, b"Team")}
         for e in stats:
@@ -288,6 +291,11 @@ class Game:
                 town = ints(e, b"TownID")
                 kind = e["m_stringData"][0]["m_value"].decode() if e.get("m_stringData") else "structure"
                 self.structures.append((t, kind, town_team.get(town[0]) if town else None))
+            elif n == "TownStructureInit" and fixed(e, b"PositionX"):
+                self.towns.append((ints(e, b"Team")[0] - 1, ints(e, b"Lane")[0] if ints(e, b"Lane") else 0,
+                                   fixed(e, b"PositionX")[0], fixed(e, b"PositionY")[0]))
+            elif n == "JungleCampInit" and fixed(e, b"PositionX"):
+                self.camp_spots.append((fixed(e, b"PositionX")[0], fixed(e, b"PositionY")[0]))
             elif n == "LevelUp":
                 pid, lvl = ints(e, b"PlayerID")[0], ints(e, b"Level")[0]
                 if pid in self.pid:
@@ -312,6 +320,16 @@ class Game:
                     ui += it[i]
                     if ui in tag2pid:
                         self.positions.append((self.sec(e["_gameloop"]), tag2pid[ui], it[i + 1], it[i + 2]))
+        # forts, keeps, towers, wells and cores (owner 11/12 = team 0/1), and when each fell
+        self.buildings, tag2b = [], {}
+        for e in tr:
+            if e["_event"].endswith("SUnitBornEvent") and (kind := BUILDINGS.get(e["m_unitTypeName"].decode())) \
+                    and e["m_controlPlayerId"] in (11, 12):
+                b = dict(kind=kind, team=e["m_controlPlayerId"] - 11, x=e["m_x"], y=e["m_y"], lost=None)
+                self.buildings.append(b)
+                tag2b[(e["m_unitTagIndex"], e["m_unitTagRecycle"])] = b
+            elif e["_event"].endswith("SUnitDiedEvent") and (b := tag2b.get((e["m_unitTagIndex"], e["m_unitTagRecycle"]))):
+                b["lost"] = self.sec(e["_gameloop"])
         self.revives = [(self.sec(e["_gameloop"]), tag2pid[e["m_unitTagIndex"]]) for e in tr
                         if e["_event"].endswith("SUnitRevivedEvent") and e["m_unitTagIndex"] in tag2pid]
 
@@ -544,6 +562,116 @@ def analysis_dict(g, m, deaths, notes):
                 replay=os.path.basename(g.path), id=replay_id(g.path))
 
 
+# ---------------------------------------------------------------- death map
+def map_facts(g):
+    """Where things were, in map units (y up): lanes, buildings, camps and every hero death."""
+    mt = g.me["team"]
+    xy = lambda x, y: [round(x, 1), round(y, 1)]
+    cores = {b["team"]: (b["x"], b["y"]) for b in g.buildings if b["kind"] == "core"}
+    lanes = []
+    for lane in sorted({l for _, l, _, _ in g.towns}):
+        path = []
+        for team in (0, 1):     # core, keep, fort on one side, then fort, keep, core on the other
+            core = cores.get(team)
+            towns = sorted(((x, y) for t, l, x, y in g.towns if t == team and l == lane),
+                           key=lambda p: math.dist(p, core) if core else 0)
+            side = ([core] if core else []) + towns
+            path += side if team == 0 else side[::-1]
+        lanes.append([xy(*p) for p in path])
+    deaths, n = [], 0
+    for d in g.deaths:
+        v = g.pid[d["victim"]]
+        n += v is g.me
+        deaths.append(dict(t=fmt(d["t"]), x=round(d["x"], 1), y=round(d["y"], 1), hero=g.label(v),
+                           who="you" if v is g.me else "ally" if v["team"] == mt else "enemy",
+                           id=f"d{n:02d}" if v is g.me else None))
+    return dict(mid_x=round(g.mid_x, 1) if g.mid_x is not None else None, lanes=lanes,
+                buildings=[dict(kind=b["kind"], side="us" if b["team"] == mt else "them", x=b["x"], y=b["y"],
+                                lost=fmt(b["lost"]) if b["lost"] is not None else None) for b in g.buildings],
+                camps=[xy(x, y) for x, y in g.camp_spots], deaths=deaths)
+
+
+MAP_PX = 4    # pixels per map unit
+MAP_INK = {"us": "#5aa0e6", "them": "#e05252", "ally": "#5aa0e6", "enemy": "#e05252", "you": "#f2a93b",
+           "bg": "#1c1f24", "lane": "#2b3038", "dim": "#9aa3ad", "camp": "#6b7a8f"}
+
+
+def map_svg(mp):
+    """The death map: a schematic drawn from map_facts, no game art. None when there is nothing to place."""
+    from html import escape
+    pts = [(b["x"], b["y"]) for b in mp.get("buildings") or []] + [tuple(c) for c in mp.get("camps") or []] \
+        + [(d["x"], d["y"]) for d in mp.get("deaths") or []]
+    if not pts:
+        return None
+    x0, x1 = min(p[0] for p in pts) - 10, max(p[0] for p in pts) + 10
+    y0, y1 = min(p[1] for p in pts) - 10, max(p[1] for p in pts) + 10
+    W, H, LEG = round((x1 - x0) * MAP_PX), round((y1 - y0) * MAP_PX), 26
+    X = lambda x: round((x - x0) * MAP_PX, 1)
+    Y = lambda y: round((y1 - y) * MAP_PX, 1)     # map y runs up, svg y runs down
+    ink = MAP_INK
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H + LEG}" width="{W}" height="{H + LEG}" '
+           f'font-family="system-ui,Segoe UI,Roboto,sans-serif">',
+           f'<rect width="{W}" height="{H + LEG}" fill="{ink["bg"]}"/>']
+    for lane in mp.get("lanes") or []:
+        if len(lane) > 1:
+            out.append(f'<polyline points="{" ".join(f"{X(x)},{Y(y)}" for x, y in lane)}" fill="none" '
+                       f'stroke="{ink["lane"]}" stroke-width="{3 * MAP_PX}" stroke-linecap="round" stroke-linejoin="round"/>')
+    mid = mp.get("mid_x")
+    ours = [b["x"] for b in mp.get("buildings") or [] if b["side"] == "us"]
+    if mid is not None:
+        out.append(f'<line x1="{X(mid)}" y1="0" x2="{X(mid)}" y2="{H}" stroke="{ink["dim"]}" stroke-opacity="0.35" stroke-dasharray="6 6"/>')
+        if ours:
+            left_is_ours = sum(ours) / len(ours) < mid
+            for x, anchor, mine in ((8, "start", left_is_ours), (W - 8, "end", not left_is_ours)):
+                out.append(f'<text x="{x}" y="16" font-size="12" text-anchor="{anchor}" fill="{ink["dim"]}">'
+                           f'{"your half" if mine else "enemy half"}</text>')
+    for cx, cy in mp.get("camps") or []:
+        x, y = X(cx), Y(cy)
+        out.append(f'<polygon points="{x},{y - 6} {x + 6},{y} {x},{y + 6} {x - 6},{y}" fill="{ink["camp"]}"><title>camp</title></polygon>')
+    size = {"core": 9, "keep": 7, "fort": 6}
+    for b in sorted(mp.get("buildings") or [], key=lambda b: b["kind"] in size):   # towers and wells under forts
+        c = ink[b["side"]]
+        paint = f'fill="none" stroke="{c}" stroke-opacity="0.6" stroke-width="1.5"' if b["lost"] else f'fill="{c}"'
+        tip = f'<title>{b["kind"]} ({"yours" if b["side"] == "us" else "theirs"})' + (f', lost {b["lost"]}' if b["lost"] else "") + "</title>"
+        x, y = X(b["x"]), Y(b["y"])
+        if b["kind"] in size:
+            r = size[b["kind"]]
+            out.append(f'<rect x="{x - r}" y="{y - r}" width="{2 * r}" height="{2 * r}" rx="2" {paint}>{tip}</rect>')
+        else:
+            out.append(f'<circle cx="{x}" cy="{y}" r="{3 if b["kind"] == "tower" else 2.5}" {paint}>{tip}</circle>')
+    deaths = mp.get("deaths") or []
+    for d in deaths:
+        if d["who"] != "you":
+            x, y, c = X(d["x"]), Y(d["y"]), ink[d["who"]]
+            out.append(f'<path d="M{x - 4},{y - 4}L{x + 4},{y + 4}M{x - 4},{y + 4}L{x + 4},{y - 4}" stroke="{c}" '
+                       f'stroke-width="2" stroke-opacity="0.8"><title>{escape(d["hero"])} died {d["t"]}</title></path>')
+    placed = []
+    for d in deaths:
+        if d["who"] == "you":
+            x0_, y0_ = x, y = X(d["x"]), Y(d["y"])
+            while any(math.dist((x, y), p) < 17 for p in placed):    # two deaths on one spot: step aside
+                x += 17
+            placed.append((x, y))
+            if x != x0_:
+                out.append(f'<line x1="{x0_}" y1="{y0_}" x2="{x}" y2="{y}" stroke="{ink["you"]}" stroke-width="1.5"/>')
+            out.append(f'<g><title>{d["id"]} {d["t"]}</title><circle cx="{x}" cy="{y}" r="9" fill="{ink["you"]}" '
+                       f'stroke="{ink["bg"]}" stroke-width="1.5"/><text x="{x}" y="{y + 4}" font-size="11" font-weight="700" '
+                       f'text-anchor="middle" fill="{ink["bg"]}">{int(d["id"][1:])}</text></g>')
+    ly = H + LEG / 2
+    legend = [("you", "your deaths (numbered as below)"), ("ally", "ally deaths"), ("enemy", "enemy deaths")]
+    x = 10
+    for who, label in legend:
+        if who == "you":
+            out.append(f'<circle cx="{x + 5}" cy="{ly}" r="5" fill="{ink["you"]}"/>')
+        else:
+            out.append(f'<path d="M{x + 1},{ly - 4}L{x + 9},{ly + 4}M{x + 1},{ly + 4}L{x + 9},{ly - 4}" stroke="{ink[who]}" stroke-width="2"/>')
+        out.append(f'<text x="{x + 15}" y="{ly + 4}" font-size="11" fill="{ink["dim"]}">{label}</text>')
+        x += 22 + 6 * len(label)
+    out.append(f'<text x="{W - 10}" y="{ly + 4}" font-size="11" text-anchor="end" fill="{ink["dim"]}">hollow = destroyed</text>')
+    out.append("</svg>")
+    return "\n".join(out)
+
+
 def session_date(played):
     """'2026-10-17 00.52' -> '2026-10-16': games before 06:00 belong to the evening before."""
     import datetime as _dt
@@ -557,7 +685,7 @@ def session_date(played):
 
 
 def game_dir(path, m):
-    """<data>/games/<session date>/<YYYY-MM-DD HH.MM>_<map>_<hero>: analysis.json, timeline.txt, coaching.md."""
+    """<data>/games/<session date>/<YYYY-MM-DD HH.MM>_<map>_<hero>: analysis.json, timeline.txt, map.json + map.svg, coaching.md."""
     played = os.path.basename(path)[:16]
     name = f"{played}_{norm(m['map'])}_{norm(m['hero'])}"
     return os.path.join(games_dir(), session_date(played), name)
@@ -569,6 +697,14 @@ def write_game_files(g, m, deaths, notes):
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "analysis.json"), "w", encoding="utf-8") as f:
         json.dump(analysis_dict(g, m, deaths, notes), f, indent=1)
+    # the death map's facts sit in their own file: the page needs them, the coach doesn't read them
+    mp = map_facts(g)
+    with open(os.path.join(d, "map.json"), "w", encoding="utf-8") as f:
+        json.dump(mp, f, indent=1)
+    svg = map_svg(mp)
+    if svg:
+        with open(os.path.join(d, "map.svg"), "w", encoding="utf-8") as f:
+            f.write(svg)
     buf = io.StringIO()
     with redirect_stdout(buf):
         print_timeline(g)
@@ -956,7 +1092,9 @@ def _hots_tree():
                      ["Damage taken", num(m.get("damage_taken"))], ["XP contribution", num(m.get("xp"))],
                      ["Flags", f"first to die {m.get('first_deaths')} · picked off {m.get('picked_off')} · enemy half {m.get('enemy_half')} · "
                                f"far from front {m.get('far_from_front')} · absent from lost fights {m.get('absent_fights', 0)}"]]}],
-                 "images": [], "links": [], "moments": [], "details": [],
+                 "images": [{"src": rel(os.path.join(gdir, "map.svg")), "alt": f"{m['map']}: where each death happened", "wide": True}]
+                           if os.path.exists(os.path.join(gdir, "map.svg")) else [],
+                 "links": [], "moments": [], "details": [],
                  "timeline": {"duration": m.get("length") or 0, "ticks": 300,
                               "deaths": [{"id": f"d{i + 1:02d}", "t": sec(d["t"]), "label": f"d{i + 1:02d} death {d['t']} <- {d['killers']}"}
                                          for i, d in enumerate(an.get("deaths") or []) if sec(d["t"]) is not None],

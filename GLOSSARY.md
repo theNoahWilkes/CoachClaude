@@ -158,3 +158,10 @@ _Avoid_: archive, shrink, transcode
 **Driver**:
 `owcoach coach`: the code that cuts matches into pieces, fills the briefs, runs the processes
 and the session summary, and rebuilds the page.
+
+## Heroes of the Storm
+
+**Death map**:
+The drawing on a HotS match page of where each hero died, over the lanes, buildings and camps
+read from the replay (`map.json`, `map.svg`). It is drawn from replay facts only, never from game
+art. The player's deaths carry the numbers of their moments (d01 is 1).

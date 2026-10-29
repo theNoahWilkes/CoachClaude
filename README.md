@@ -103,7 +103,10 @@ hotscoach site --open                             # <data>/coaching.html (~/.loc
 
 In Claude Code: *"coach tonight's games"*, *"why did we lose the last Dragon Shire?"*. Each
 game gets `games/<session>/<game>/{analysis.json, timeline.txt}` under the data folder and the
-skill writes `coaching.md` beside them (and one per session).
+skill writes `coaching.md` beside them (and one per session). The match page also shows a death
+map (`map.svg`, drawn from the replay, no game art): your deaths numbered as in the moments list,
+every other hero death, and the buildings, hollow once destroyed. Matches analyzed before it existed
+get one when `hotscoach batch` runs again over the replay folder.
 
 Limits: positions are sampled about every 15 s and only for heroes in combat; ability casts
 are not in the tracker data; Garden of Terror and Hanamura emit no objective events. The tank

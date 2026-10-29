@@ -11,7 +11,8 @@ collect_hots) decides the content and hands over this shape:
            tables [table], warn (str)
   game:    id, title, nav (sidebar text, without the result) | None, sub (html), result (class suffix),
            coached, processed, cells {key: str | {text, cls}},
-           warnings [str], tables [table], images [{src, alt}], timeline | None, video (src) | None,
+           warnings [str], tables [table], images [{src, alt, wide?}] (wide: full width under the tables,
+           not beside them), timeline | None, video (src) | None,
            links [{label, href}], report_md (+ report_title), notes_md (+ notes_title: a second text
            block, e.g. what the lessons file says about this game), moments [moment], details [detail]
   table:   title?, header [str], rows [[cell]], align_first? (bool: first column is a row header),
@@ -203,10 +204,14 @@ def _game(tree: dict, g: dict, day: dict, prev: dict | None, nxt: dict | None) -
         out.append(f'<p class="sub">{g["sub"]}</p>')
     for w in g.get("warnings") or []:
         out.append(f'<p class="warn">{w}</p>')
-    if g.get("tables") or g.get("images"):
+    img = lambda i: f'<a href="{e(i["src"])}" target="_blank"><img src="{e(i["src"])}" loading="lazy" alt="{e(i.get("alt"))}"></a>'
+    side = [i for i in g.get("images") or [] if not i.get("wide")]
+    if g.get("tables") or side:
         out.append('<div class="two"><div>' + "".join(table_html(t) for t in g.get("tables") or []) + "</div>"
-                   + '<div class="imgs">' + "".join(f'<a href="{e(i["src"])}" target="_blank"><img src="{e(i["src"])}" loading="lazy" alt="{e(i.get("alt"))}"></a>'
-                                                    for i in g.get("images") or []) + "</div></div>")
+                   + '<div class="imgs">' + "".join(img(i) for i in side) + "</div></div>")
+    for i in g.get("images") or []:
+        if i.get("wide"):
+            out.append(f'<div class="wide">{img(i)}</div>')
     out.append(timeline_svg(g.get("timeline")))
     if g.get("video"):
         links = "".join(f'<a href="{e(l["href"])}"' + (' target="_blank"' if l.get("blank") else "") + f'>{e(l["label"])}</a>' for l in g.get("links") or [])
@@ -317,7 +322,7 @@ table.stats th{text-align:left;color:var(--dim);font-weight:500}table.stats tr:f
 table.games{width:100%}
 .res-victory,.res-win{color:var(--green)}.res-defeat,.res-loss{color:var(--red)}
 .v-better{color:var(--green)}.v-worse{color:var(--red)}.v-normal-variation{color:var(--dim)}
-.two{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:24px;align-items:start}.imgs{min-width:0}
+.two{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:24px;align-items:start}.imgs{min-width:0}.wide img{display:block;width:100%;max-width:900px;margin:14px 0 0;border:1px solid var(--line)}
 .tnote{color:var(--dim);font-size:13px;margin:4px 0;max-width:46em}.imgs img{width:100%;max-height:360px;object-fit:contain;object-position:left top;border:1px solid var(--line);display:block;margin-bottom:6px}
 .two h2{margin-top:8px}
 .tl{width:100%;height:56px;display:block;margin-top:12px}.tl-bar{fill:#262a32}.tl-fight{fill:#3a4150}.tl-dead{fill:#5a2626}.tl-span{fill:#3a4150}
