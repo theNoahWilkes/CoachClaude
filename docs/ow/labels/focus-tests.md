@@ -33,3 +33,11 @@ Clocks are the game clock the reports use. The match video runs a few seconds ah
 - Noah: the next engagement I poked safely and killed two of their team, turning the 5v5 into a
   5v3 in our favour.
 - Now: the digest lists it under "Swings" as a good-play lead for the triage.
+
+### The 3 s cutoff (Noah, 2026-10-29)
+Of the library's 14 down-two deaths, 4 came within 3 s and 6 within 5 s. The two in between:
+- 2026.10.13 - 21.19.42.02 / Havana d10 (20:39, Lifeweaver), 3.7 s: not a stagger.
+- 2026.10.16 - 22.23.04.03 / Dorado d03 (5:09, Lifeweaver), 4.8 s: definitely a stagger.
+
+Noah chose 3 s: "I'd rather see something and dismiss it as inactionable than not see something
+actionable." So Havana d10 is graded staggered and is expected noise; Dorado d03 must stay broken.
