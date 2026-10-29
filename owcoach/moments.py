@@ -9,12 +9,19 @@ and so readers look at the overview cells of the focus tests only.
   stretch with the team down two or more while the player is alive, and the 20 s after each
   respawn. They are facts (`packet.json` → `focus_tests`, every kind for every match); which
   kinds test the current focus is matched from its wording when the digest is written.
+  A down-two window is graded here, from the facts, and no image is read for it: lived through
+  is held, ended in the player's death is broken. The player, on Runasapi 2026-10-27: "down two"
+  is a diagnosis on a death; whether a player who lived left too late is out of scope. A reader
+  on 5 s cells had called a Fade out 8 s in "stayed in the fight".
 - **Death chains** are deaths that follow from the one before: a death within `SHORT_LIFE` of
   respawning (the `short_life` flag). One poor decision and its consequence are one moment
   (the player, on m03 Hollywood 2026-10-20: a Fade into the open with ult ready, then a forced
   fight out of spawn 20 s later with the ult that should have been used).
+- **Swings** are fights the alive counter turned two or more the team's way while the player
+  got final blows and lived: good-play leads the triage can't see in a list of final blows
+  (Runasapi 2026-10-27 1:30-1:44: 4v5 to 5v3 on the player's two final blows).
 - **The digest** is one match as text for the triage: header, every death's facts block, the
-  chains, ults, fights and the focus tests, with the match folder's prefix so every moment can
+  chains, ults, fights, swings and the focus tests, with the match folder's prefix so every moment can
   be cited as `m03 d04` or `m03 5:18`.
 """
 from __future__ import annotations
@@ -26,6 +33,7 @@ RESPAWN_WINDOW = 20.0        # s after a respawn: the walk back in, where waitin
 DOWN_BY = 2                  # enemies alive minus allies alive that makes a "down two" stretch
 MIN_DOWN_S = 2.0             # s: a shorter stretch is a counter blip, not a situation
 MERGE_GAP_S = 1.5            # s: two down-two stretches this close are one
+SWING_BY = 2                 # counter gain (allies minus enemies) inside a fight that makes it a swing
 DEAD_PAD_S = 12.0            # s of DEAD after a death with no respawn read (the match ended or it was missed)
 
 KINDS = {"low": "under half HP", "down_two": "team down two or more", "respawn": "the 20 s after a respawn"}
@@ -99,8 +107,10 @@ def focus_tests(packet: dict) -> list[dict]:
                       "what": f"min {e.get('min_hp')}/{e.get('max')}, {'died' if died else 'recovered'}",
                       "death": _death_in(packet, e["from"] - 1, e["to"] + 2.5) if died else None})
     for a, b, ally, enemy in down_two(packet):
+        death = _death_in(packet, a, b + 0.5)
         tests.append({"kind": "down_two", "from": round(a, 1), "to": round(b, 1), "hero": None,
-                      "what": f"team down two ({ally}v{enemy} at worst)", "death": _death_in(packet, a, b + 0.5)})
+                      "what": f"team down two ({ally}v{enemy} at worst)", "death": death,
+                      "grade": "broke" if death else "held"})
     end = (packet.get("game") or {}).get("duration_s")
     for d in packet.get("deaths") or []:
         r = (d.get("respawned") or {}).get("t")
@@ -115,7 +125,37 @@ def focus_tests(packet: dict) -> list[dict]:
     for i, x in enumerate(tests, 1):
         x["id"] = f"f{i:02d}"
         x["clock"], x["to_clock"] = _clock(x["from"]), _clock(x["to"])
-    return [{k: x[k] for k in ("id", "kind", "from", "to", "clock", "to_clock", "hero", "what", "death")} for x in tests]
+    return [{k: x.get(k) for k in ("id", "kind", "from", "to", "clock", "to_clock", "hero", "what", "death", "grade")} for x in tests]
+
+
+def fact_grade(x: dict) -> str:
+    """How a focus test graded from the facts reads in a brief, e.g. "held (lived)"; "" when
+    it is the readers' to grade."""
+    if not x.get("grade"):
+        return ""
+    return f"{x['grade']} ({'ended in ' + x['death'] if x.get('death') else 'lived'})"
+
+
+def swings(packet: dict) -> list[dict]:
+    """Fights the alive counter turned SWING_BY or more the team's way, with the player's final
+    blows in them and no death of theirs: [{from, to, clock, to_clock, before, best, kills}]."""
+    rows = [r for r in packet.get("alive_series") or [] if r[0] is not None and r[1] is not None and r[2] is not None]
+    deaths = [d["t"] for d in packet.get("deaths") or []]
+    out = []
+    for f in (packet.get("hud_game") or {}).get("fights") or []:
+        a, b = f.get("from_t"), f.get("to_t")
+        if a is None or b is None or any(a <= t <= b for t in deaths):
+            continue
+        kills = [k for k in packet.get("final_blows") or [] if a <= k["t"] <= b]
+        before = _alive_at(packet, a)
+        inside = [r for r in rows if a <= r[0] <= b]
+        if not kills or not before or not inside:
+            continue
+        best = max(inside, key=lambda r: r[1] - r[2])
+        if (best[1] - best[2]) - (before[0] - before[1]) >= SWING_BY:
+            out.append({"from": a, "to": b, "clock": _clock(a), "to_clock": _clock(b), "before": f"{before[0]}v{before[1]}",
+                        "best": f"{best[1]}v{best[2]}", "kills": [k["id"] for k in kills]})
+    return out
 
 
 def chains(packet: dict) -> list[dict]:
@@ -161,7 +201,7 @@ def digest(packet: dict, prefix: str, focuses: list[str]) -> str:
     current focus bullets (empty when there is none)."""
     g, c = packet.get("game") or {}, packet.get("counts") or {}
     heroes = ", ".join(f"{h['hero']} {h.get('seconds', 0) / 60:.0f} min" for h in packet.get("heroes") or []) or "hero unknown"
-    tests = packet.get("focus_tests") or focus_tests(packet)
+    tests = focus_tests(packet)   # always fresh: free, and packets built before a change lack its fields
     chs = packet.get("chains") if "chains" in packet else chains(packet)
     L = [f"# {prefix} {g.get('map') or '?'} {g.get('result') or ''} ({g.get('mode') or '?'}, {_clock(g.get('duration_s') or 0)})".rstrip(),
          f"Heroes: {heroes}. Deaths {c.get('deaths', 0)}, final blows {c.get('final_blows', 0)}, "
@@ -186,6 +226,8 @@ def digest(packet: dict, prefix: str, focuses: list[str]) -> str:
     L += ["", "## Fights (from the HUD: HP changes, kills, deaths, ults)"]
     fights = (packet.get("hud_game") or {}).get("fights") or []
     L.append(", ".join(f"{f['from']}-{f['to']}" for f in fights) if fights else "None read.")
+    L += ["", "## Swings (fights the counter turned two or more your way, with your final blows and you alive: good-play leads)"]
+    L += [f"- {prefix} {s['clock']}-{s['to_clock']}: {s['before']} to {s['best']}, final blows {', '.join(s['kills'])}" for s in swings(packet)] or ["None."]
     L += ["", "## Final blows"]
     fbs = packet.get("final_blows") or []
     L.append(", ".join(f"{k['id']} {k['clock']} {_ab(k.get('alive_before'))}" for k in fbs) if fbs else "None.")
@@ -199,7 +241,9 @@ def digest(packet: dict, prefix: str, focuses: list[str]) -> str:
         if f:
             L.append(f"Focus: {f}  (kinds: {', '.join(KINDS[k] for k in kinds_for(f))})")
         L += [f"- {prefix} {x['id']} {x['clock']}-{x['to_clock']} {KINDS[x['kind']]}: {x['what']}"
-              + (f", {x['hero']}" if x.get("hero") else "") + (f", ends in {x['death']}" if x.get("death") else "") for x in xs] or ["- none"]
+              + (f", {x['hero']}" if x.get("hero") else "")
+              + (f"; graded from the facts: {fact_grade(x)}" if x.get("grade") else (f", ends in {x['death']}" if x.get("death") else ""))
+              for x in xs] or ["- none"]
     return "\n".join(L).rstrip() + "\n"
 
 

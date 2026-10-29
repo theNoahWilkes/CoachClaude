@@ -69,7 +69,9 @@ _Avoid_: highlight, event (for a coached moment)
 
 **Focus test**:
 A window in a match where the current focus could be tested, such as a low-HP episode for a
-focus about walls. The pipeline lists them from facts; the coach judges each one.
+focus about walls. The pipeline lists them from facts; the coach judges each one, except where
+the facts settle it (in Overwatch, a down-two window is held if the player lived through it and
+broken if it ended in their death).
 
 **Stoplight**:
 The one-word focus grade a match report gives each focus: green, amber, red, or not tested.
@@ -112,6 +114,10 @@ readers will read: about eight per session, `<session>/triage.md`.
 **Death chain**:
 Deaths that each came within 20 s of respawning from the one before: one decision and what it
 cost, coached as one moment from its first death.
+
+**Swing**:
+A fight the alive counter turned two or more the team's way while the player got final blows
+and lived. Listed free in the digest as a good-play lead for the triage.
 
 **Full read**:
 Reading every death, the whole match in overview sheets and every ult. Since ADR 0012 a dev-mode

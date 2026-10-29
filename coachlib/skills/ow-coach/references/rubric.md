@@ -98,7 +98,10 @@ Two runs on the same game gave different grades (Havana, 2026-10-15), so use thi
    HP or an escape, the tests are `hud_game.low_episodes` in the packet (every stretch under half
    HP, with the escape's state when it started, whether it was pressed, and the outcome), read
    locally; use them as the list, and the readers' notes for what the stills add (cover, who was
-   there).
+   there). A focus about leaving when the team is down two is graded from the facts alone: each
+   down-two window (`focus_tests`, kind `down_two`) the player lived through is held, each that
+   ended in their death is broken. "Down two" is a diagnosis on a death; whether a player who
+   lived left a few seconds late is out of scope (the player, 2026-10-29).
 2. Grade by the count:
    - ⚪ **Not tested:** no tests.
    - 🟢 **Green:** held in at least 3 of 4 tests, and no avoidable death was caused by breaking it.

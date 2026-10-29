@@ -7,7 +7,7 @@ Extra sheets for this window: overview_NNNb.jpg next to each overview_NNN.jpg ab
 Player {{PLAYER}} ({{HEROES}}). Deaths in this window: {{DEATHS}}. Ults: {{ULTS}}.
 Fights in this window (from the HUD: HP changes, kills, deaths, ults): {{FIGHTS}}.
 Low-HP episodes in this window (packet hud_game.low_episodes): {{LOW_EPISODES}}.
-Presses in this window with context travel / engage / low (packet hud_game.presses): {{PRESSES}}.
+Presses in this window with context travel / fight / low (fight: at or above half HP in a fight, in or out) (packet hud_game.presses): {{PRESSES}}.
 Current focus (from the player's lessons file): {{FOCUS}}
 Rubric: {{SKILL_DIR}}/references/rubric.md. Read its "Overview sheets" and "Blind spots" sections first.
 

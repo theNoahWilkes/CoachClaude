@@ -3,7 +3,7 @@ anyone looks at an image. Readers will then read the stills of the moments you p
 else, so a moment you leave out is not coached.
 
 Digest: {{DIGEST}} (every match of the session: each death's facts block, the death chains,
-ults, fights, final blows and the focus tests; facts read locally, given). Read it in one go.
+ults, fights, swings, final blows and the focus tests; facts read locally, given). Read it in one go.
 Lessons file: {{LESSONS}} (read "Current focus" and "Recurring patterns"; don't edit it).
 Player {{PLAYER}}. Current focus: {{FOCUS}}
 Rubric: {{SKILL_DIR}}/references/rubric.md. Read its "Deaths" and "Blind spots" sections.
@@ -21,7 +21,11 @@ quiet match.
 - A death chain (listed per match) is one moment, told from its first death: list its deaths
   together, e.g. "m03 d03+d04". The first death is usually the decision; the rest is what it cost.
 - A good play has no death to anchor it: cite its clock (a fight won at 2v5 with the player
-  alive, an ult that turned a fight, a low-HP episode survived with the escape held).
+  alive, an ult that turned a fight, a low-HP episode survived with the escape held). The
+  digest's swings are the leads: fights the counter turned two or more the team's way on the
+  player's final blows, with the player alive.
+- A down-two window the player lived through is already graded held from the facts; it is not a
+  moment on its own.
 - A death that breaks the current focus or a recurring pattern is a strong pick even when the
   pattern is already in the lessons file: the repeat is what the player most needs to see. An
   escape that was ready, or a prompt that was on screen, and not used is the clearest kind.

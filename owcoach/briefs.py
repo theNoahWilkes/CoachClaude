@@ -222,14 +222,23 @@ def pieces(game: Path, picks: dict | None = None) -> list[Piece]:
                  ULTS=", ".join(f"{u['id']} {u.get('outcome')} held {u.get('held_s')} s" for u in ults))
         out.append(Piece("ults", "ults", game, fill("ults", f), [packet_dir / "notes" / "ults.md"]))
 
-    out.append(_writer(game, common, lessons, "every death, the whole match in overview sheets and every ult (the full read)"))
+    out.append(_writer(game, packet, common, lessons, "every death, the whole match in overview sheets and every ult (the full read)"))
     return out
 
 
-def _writer(game: Path, common: dict, lessons: Path, read: str) -> Piece:
+def _fact_tests(packet: dict, lessons: Path) -> str:
+    """The current focus's tests that the facts grade (down two: lived or died), for the writer."""
+    from .moments import KINDS, fact_grade, focus_tests, kinds_for
+    kinds = {k for f in focus_bullets(lessons) for k in kinds_for(f)}
+    return "\n".join(f"- {x['id']} {x['clock']}-{x['to_clock']} {KINDS[x['kind']]}: {fact_grade(x)}"
+                     for x in focus_tests(packet) if x["kind"] in kinds and x.get("grade")) or "- none"
+
+
+def _writer(game: Path, packet: dict, common: dict, lessons: Path, read: str) -> Piece:
     """The writer, once the readers are done."""
     packet_dir = game / "packet"
-    f = dict(common, GAME=game, LESSONS=lessons, SESSION=game.parent, CONSTRAINTS=WRITER_CONSTRAINTS, READ=read)
+    f = dict(common, GAME=game, LESSONS=lessons, SESSION=game.parent, CONSTRAINTS=WRITER_CONSTRAINTS, READ=read,
+             FACT_TESTS=_fact_tests(packet, lessons))
     return Piece("writer", "writer", game, fill("writer", f), [packet_dir / "coaching.md", packet_dir / "notes" / "summary.md"])
 
 
@@ -255,7 +264,8 @@ def _lean_pieces(game: Path, packet: dict, lessons: Path, common: dict, heroes_l
     # focus tests and clock-only moments: the first-pass sheets that cover them, 30 per reader
     focuses = focus_bullets(lessons)
     kinds = {k for f in focuses for k in kinds_for(f)}
-    tests = [x for x in packet.get("focus_tests") or focus_tests(packet) if x["kind"] in kinds]
+    # the tests the facts grade (down two) need no image
+    tests = [x for x in focus_tests(packet) if x["kind"] in kinds and not x.get("grade")]
     moments = sorted(picks.get("clocks") or []) + sorted(
         (k["t"], k["t"]) for k in packet.get("final_blows", []) if k["id"] in ids)
     spans = _windows([(x["from"] - TEST_PAD_S, x["to"] + TEST_PAD_S) for x in tests]
@@ -292,7 +302,7 @@ def _lean_pieces(game: Path, packet: dict, lessons: Path, common: dict, heroes_l
     read = (f"the triage's shortlisted deaths ({', '.join(sorted(i for i in ids if i.startswith('d'))) or 'none'}), "
             f"the overview cells of the focus tests ({len(tests)} tests in {len(sheets)} sheets)"
             + (f" and the shortlisted ults ({', '.join(u['id'] for u in ults)})" if ults else ""))
-    out.append(_writer(game, common, lessons, read))
+    out.append(_writer(game, packet, common, lessons, read))
     return out
 
 
