@@ -54,6 +54,22 @@ def test_only_down_two_is_graded_from_facts():
     assert all(x["grade"] is None for x in focus_tests(RUNASAPI) if x["kind"] != "down_two")
 
 
+# 2026.10.13 - 21.19.42.02 / m04 Havana d10 (Lifeweaver), labelled in docs/ow/labels/deaths.md and
+# a trial for the coach many times over. Down two came from the enemy's respawns walking in (3v3 to
+# 3v5 at 20:35), not from allies dying. Noah: not a stagger, but fine to flag at the 3 s cutoff.
+HAVANA_D10 = {
+    "game": {"map": "Havana", "result": "defeat", "mode": "escort", "duration_s": 1256.0},
+    "alive_series": [[1221.0, 5, 5], [1223.5, 5, 4], [1227.0, 5, 3], [1230.0, 4, 3], [1231.5, 3, 3],
+                     [1235.5, 3, 5], [1238.5, 2, 5], [1240.5, 4, 5], [1241.0, 3, 5]],
+    "deaths": [{"id": "d10", "t": 1239.2, "clock": "20:39"}],
+}
+
+
+def test_havana_d10_is_flagged_just_past_the_cutoff():
+    d = next(x for x in focus_tests(HAVANA_D10) if x["kind"] == "down_two")
+    assert (d["death"], d["grade"], d["late_s"]) == ("d10", "broke", 3.7)
+
+
 def test_the_lost_fight_focus_is_tested_by_down_two():
     assert kinds_for("Lost fight: don't stagger! Retreat and live to rejoin, or die fast with the team.") == ["down_two"]
 
