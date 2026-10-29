@@ -583,7 +583,9 @@ def game_hud(rows: list[dict], start: float, event_ts: list[float], death_ts: li
     in_fight = lambda ts: any(a <= ts <= b for a, b in spans)
 
     # presses, every slot: a steady "ready" (>= 2 frames) -> steady not-ready (>= 2 frames).
-    # context: travel = outside a fight; engage = in a fight at or above half HP; low = in a fight under half
+    # context: travel = outside a fight; fight = in a fight at or above half HP; low = in a fight under half.
+    # Not "engage": it says nothing about which way the press went, and a Fade out of a 3v5 at
+    # 217 HP was read as going in (Runasapi 2026-10-27).
     presses = []
     by_hero: dict[str, list[dict]] = {}
     for r in rows:
@@ -597,7 +599,7 @@ def game_hud(rows: list[dict], start: float, event_ts: list[float], death_ts: li
                 if a == b == "ready" and c != "ready" and d != "ready":
                     r = seq[i][0]
                     hp = hp_of(r)
-                    ctx = "unknown" if hp is None else ("low" if hp < LOW_FRAC * r["max"] else ("engage" if in_fight(r["t"]) else "travel"))
+                    ctx = "unknown" if hp is None else ("low" if hp < LOW_FRAC * r["max"] else ("fight" if in_fight(r["t"]) else "travel"))
                     # the countdown it starts from (the first number read in this cooling run)
                     first_n = next((seq[k][1][1] for k in range(i, min(i + 4, len(seq))) if seq[k][1][1] is not None), None)
                     presses.append({"t": round(r["t"] - start, 1), "clock": clock(r["t"]), "hero": hero or None,
@@ -660,7 +662,7 @@ def game_hud(rows: list[dict], start: float, event_ts: list[float], death_ts: li
             cds = [p["cooldown_from"] for p in ps if p["cooldown_from"]]
             hp = [p["hp"] for p in ps if p["hp"] is not None]
             slots.append({"slot": j, "presses": len(ps),
-                          "by_context": {c: sum(1 for p in ps if p["context"] == c) for c in ("travel", "engage", "low", "unknown")},
+                          "by_context": {c: sum(1 for p in ps if p["context"] == c) for c in ("travel", "fight", "low", "unknown")},
                           "press_hp_median": int(np.median(hp)) if hp else None,
                           "cooldown_s": max(set(cds), key=cds.count) if cds else None,
                           "low_episodes_ready_at_start": sum(1 for e in eps if j <= len(e["slots_at_start"]) and e["slots_at_start"][j - 1].startswith("ready")),

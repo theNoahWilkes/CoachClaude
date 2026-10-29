@@ -7,7 +7,7 @@ Rubric: {{SKILL_DIR}}/references/rubric.md. Read its "Deaths" and "Blind spots" 
 Deaths (do each one in turn; one notes file each). For each, the facts block is everything
 the pipeline read locally: the HUD (HP and every ability slot by name, from 10 s before the
 death at 2 fps and the last 3 s at 0.1 s), every press in the 30 s before with the HP and
-whether it was travel / engage / low, the low-HP episode that ended in the death, the feed
+whether it was travel / fight / low (fight: at or above half HP in a fight, either direction), the low-HP episode that ended in the death, the feed
 and the alive counts. It is given. Don't rebuild it from the images and don't open
 packet.json for it.
 

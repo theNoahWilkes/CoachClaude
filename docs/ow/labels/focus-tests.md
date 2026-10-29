@@ -1,0 +1,43 @@
+# Labelled focus tests and good plays: ground truth from Noah
+
+Focus-test grades and good plays the coach got wrong, in the player's words, with what the
+pipeline now does about each. `tests/test_moments.py` holds each case's packet slice, so a
+change to `owcoach/moments.py` that would grade it wrong again fails there.
+
+Clocks are the game clock the reports use. The match video runs a few seconds ahead of it
+(`video_t - t`, 3 s on this match), so a clock read off the player's video is that much later.
+
+### 2026.10.27 - 22.31.54.02 / m02 Runasapi f01 1:04-1:14, down two (Moira)
+- Coach (2026-10-27): 🔴 broke. "Team down two. 1:05 by the payload ... 1:10 in the street ...
+  1:15 beside the bus at full HP. She stayed in the fight." The reader saw the 5 s cells only.
+- Facts: 3v5 from 1:04; Fade pressed at 1:12 at 217 HP (then labelled "engage"); 5v5 again at
+  1:14. The 1:12 extra cell shows the Fade down the street, the 1:18 cell shows the player
+  indoors next to the Sombra at 5v5.
+- Noah: I did leave the fight at 1:17 (video) using my Fade. Fair to say I didn't immediately
+  exit, but I wasn't in danger and I did disengage. "Down two" is a diagnosis on a death:
+  getting myself killed and staggered is the learning opportunity. If I lived, what's left is
+  whether I left too late, and that nuance is out of scope.
+- Noah (later): a firmer framing is "Lost fight: don't stagger!" If a fight is lost, either
+  safely retreat and live to rejoin the team, or die fast with the rest of the team. Dying a
+  few seconds after the fight is lost is neutral; dying x s later is bad by x, and 2 s is less
+  bad than 15 s.
+- Now: a down-two window is graded from the facts; no image is read for it. Alive when the
+  counter evens up is held, a death within 3 s is neutral, a later one is broken by that many
+  seconds. The press context is "fight",
+  not "engage".
+
+### 2026.10.27 - 22.31.54.02 / m02 Runasapi 1:30-1:44, good play (Moira)
+- Coach (2026-10-27): not mentioned. The triage gave the match's one good-play pick to 8:28.
+- Facts: 4v5 going in; k01 1:38 and k02 1:40, both the player's final blows; 5v3 at 1:40; the
+  player lived.
+- Noah: the next engagement I poked safely and killed two of their team, turning the 5v5 into a
+  5v3 in our favour.
+- Now: the digest lists it under "Swings" as a good-play lead for the triage.
+
+### The 3 s cutoff (Noah, 2026-10-29)
+Of the library's 14 down-two deaths, 4 came within 3 s and 6 within 5 s. The two in between:
+- 2026.10.13 - 21.19.42.02 / Havana d10 (20:39, Lifeweaver), 3.7 s: not a stagger.
+- 2026.10.16 - 22.23.04.03 / Dorado d03 (5:09, Lifeweaver), 4.8 s: definitely a stagger.
+
+Noah chose 3 s: "I'd rather see something and dismiss it as inactionable than not see something
+actionable." So Havana d10 is graded staggered and is expected noise; Dorado d03 must stay broken.

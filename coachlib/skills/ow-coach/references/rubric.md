@@ -98,7 +98,12 @@ Two runs on the same game gave different grades (Havana, 2026-10-15), so use thi
    HP or an escape, the tests are `hud_game.low_episodes` in the packet (every stretch under half
    HP, with the escape's state when it started, whether it was pressed, and the outcome), read
    locally; use them as the list, and the readers' notes for what the stills add (cover, who was
-   there).
+   there). A focus about lost fights (down two, "don't stagger") is graded from the facts alone,
+   per down-two window (`focus_tests`, kind `down_two`): alive when the counter evened up is
+   held; died within 3 s of the counter going down two is neutral, dying with the team, and not
+   counted; died later is broken, by that many seconds (the player respawns that far behind the
+   team). The player (2026-10-29): when a fight is lost, retreat and live to rejoin, or die fast
+   with the team; whether a player who lived left a few seconds late is out of scope.
 2. Grade by the count:
    - ⚪ **Not tested:** no tests.
    - 🟢 **Green:** held in at least 3 of 4 tests, and no avoidable death was caused by breaking it.

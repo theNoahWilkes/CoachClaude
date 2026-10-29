@@ -1,0 +1,95 @@
+"""Regression cases for owcoach/moments.py, from labelled matches (docs/ow/labels/focus-tests.md).
+
+Run with `python -m pytest tests` (or `python tests/test_moments.py`). Pure Python: no video,
+no cv2.
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from owcoach.moments import digest, focus_tests, kinds_for, swings  # noqa: E402
+
+# 2026.10.27 - 22.31.54.02 / m02 Runasapi (Moira), 0:58-2:10 and d01: the alive counter,
+# the fights, final blows and deaths as the packet has them.
+RUNASAPI = {
+    "game": {"map": "Runasapi", "result": "victory", "mode": "push", "duration_s": 632.0},
+    "alive_series": [[0.0, 5, 5], [61.0, 4, 5], [64.0, 3, 5], [74.5, 5, 5], [78.5, 4, 5], [92.0, 5, 5],
+                     [98.0, 5, 4], [99.5, 5, 3], [110.5, 5, 5], [115.0, 5, 4], [117.0, 5, 3], [128.0, 5, 5],
+                     [200.0, 5, 5], [223.5, 3, 5], [225.0, 2, 5], [242.0, 5, 5]],
+    "hud_game": {"fights": [{"from": "1:05", "to": "1:24", "from_t": 65.0, "to_t": 84.0},
+                            {"from": "1:30", "to": "1:44", "from_t": 90.5, "to_t": 104.5},
+                            {"from": "3:32", "to": "3:53", "from_t": 212.5, "to_t": 233.5}]},
+    "final_blows": [{"id": "k01", "t": 98.5, "clock": "1:38"}, {"id": "k02", "t": 99.5, "clock": "1:40"}],
+    "deaths": [{"id": "d01", "t": 229.5, "clock": "3:49", "respawned": {"t": 241.5}}],
+}
+
+
+def test_down_two_lived_is_held_from_facts():
+    # The player Faded out at 1:12, 8 s into the 3v5, and lived. A reader on 5 s cells called
+    # it "stayed in the fight"; the player: down two is a diagnosis on a death.
+    f01 = next(x for x in focus_tests(RUNASAPI) if x["kind"] == "down_two" and x["clock"] == "1:04")
+    assert (f01["grade"], f01["death"]) == ("held", None)
+
+
+def test_down_two_death_6_s_in_is_a_stagger():
+    # d01 3:49: the counter went down two at 3:44, the player died 6 s later.
+    d = next(x for x in focus_tests(RUNASAPI) if x["kind"] == "down_two" and x["death"] == "d01")
+    assert (d["grade"], d["late_s"]) == ("broke", 6.0)
+
+
+def test_down_two_death_within_grace_is_neutral():
+    pk = dict(RUNASAPI, deaths=[{"id": "d01", "t": 226.0, "clock": "3:46", "respawned": {"t": 238.0}}])
+    d = next(x for x in focus_tests(pk) if x["kind"] == "down_two" and x["death"] == "d01")
+    assert (d["grade"], d["late_s"]) == ("neutral", 2.5)
+
+
+def test_a_stuck_counter_is_cut_at_a_respawn():
+    pk = dict(RUNASAPI, alive_series=[[0.0, 5, 5], [300.0, 3, 5], [390.0, 5, 5]], deaths=[])
+    x = next(x for x in focus_tests(pk) if x["kind"] == "down_two")
+    assert (x["from"], x["to"], x["grade"]) == (300.0, 315.0, "held")
+
+
+def test_only_down_two_is_graded_from_facts():
+    assert all(x["grade"] is None for x in focus_tests(RUNASAPI) if x["kind"] != "down_two")
+
+
+# 2026.10.13 - 21.19.42.02 / m04 Havana d10 (Lifeweaver), labelled in docs/ow/labels/deaths.md and
+# a trial for the coach many times over. Down two came from the enemy's respawns walking in (3v3 to
+# 3v5 at 20:35), not from allies dying. Noah: not a stagger, but fine to flag at the 3 s cutoff.
+HAVANA_D10 = {
+    "game": {"map": "Havana", "result": "defeat", "mode": "escort", "duration_s": 1256.0},
+    "alive_series": [[1221.0, 5, 5], [1223.5, 5, 4], [1227.0, 5, 3], [1230.0, 4, 3], [1231.5, 3, 3],
+                     [1235.5, 3, 5], [1238.5, 2, 5], [1240.5, 4, 5], [1241.0, 3, 5]],
+    "deaths": [{"id": "d10", "t": 1239.2, "clock": "20:39"}],
+}
+
+
+def test_havana_d10_is_flagged_just_past_the_cutoff():
+    d = next(x for x in focus_tests(HAVANA_D10) if x["kind"] == "down_two")
+    assert (d["death"], d["grade"], d["late_s"]) == ("d10", "broke", 3.7)
+
+
+def test_the_lost_fight_focus_is_tested_by_down_two():
+    assert kinds_for("Lost fight: don't stagger! Retreat and live to rejoin, or die fast with the team.") == ["down_two"]
+
+
+def test_swing_finds_the_1_38_double_kill():
+    # 4v5 at the start of the 1:30 fight, 5v3 after the player's k01 and k02, player alive.
+    s = swings(RUNASAPI)
+    assert [(x["clock"], x["before"], x["best"], x["kills"]) for x in s] == [("1:30", "4v5", "5v3", ["k01", "k02"])]
+
+
+def test_digest_shows_grade_and_swing():
+    text = digest(RUNASAPI, "m02", ["When the counter shows your team down two or more and you're still in "
+                                    "the fight, stop healing forward and back off to the last wall toward your spawn."])
+    assert "m02 1:30-1:44: 4v5 to 5v3, final blows k01, k02" in text
+    assert "graded from the facts: held (lived until the counter evened up)" in text
+    assert "graded from the facts: broke (d01 6.0 s after the counter went down two: staggered 6 s)" in text
+
+
+if __name__ == "__main__":
+    for name, fn in list(globals().items()):
+        if name.startswith("test_"):
+            fn()
+            print("ok", name)

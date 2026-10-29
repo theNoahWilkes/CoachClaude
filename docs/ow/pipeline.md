@@ -342,8 +342,8 @@ found two.
      the same despike / dropped-digit pass as around deaths; episodes shorter than 0.75 s that
      didn't end in a death are misreads; a press needs two steady frames on each side.
    - Every slot, no fixed escape slot ([ADR 0008](../adr/0008-no-per-hero-kit-rulebook.md)).
-     `presses` cover every slot with a context (travel = outside a fight, engage = in a fight at
-     or above half, low = in a fight under half) and the countdown the press started from;
+     `presses` cover every slot with a context (travel = outside a fight, fight = in a fight at
+     or above half, which says nothing about direction, low = in a fight under half) and the countdown the press started from;
      `low_episodes` carry every slot's state at the start and, for each slot not ready, the
      last press before it (how long before, at what HP, in what context): "fought without
      Fade, spent 11 s earlier walking in at full HP" is a fact the writer can state.
@@ -393,6 +393,21 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   allies >= 2 while the player is alive (`down_two`: the counter holds until the next reading,
   stretches 1.5 s apart merge, under 2 s dropped, death-to-respawn cut out); the 20 s after each
   respawn with the counts at that moment (`respawn`). Each says which death it ended in, if any.
+  A `down_two` stretch is cut at 15 s (about a respawn plus the walk; the library's respawns
+  take a median 10-12 s, and 85-90 s stretches were counter misreads) and graded here, as a
+  lost fight where the habit is "don't stagger" (the player, 2026-10-29): `grade` held if the
+  player was alive when it ended, neutral if they died within 3 s of its start (with the team),
+  broke if later, with `late_s` the seconds (how far behind the team they respawn). On the
+  library 2026-10-29, 14 down-two deaths came 2.2-10.0 s in, 4 of them within 3 s. No reader
+  looks at its cells; the writer gets the grades in its brief. Runasapi 2026-10-27 f01 had been
+  called "stayed in the fight" by a reader on cells 5 s apart, missing a Fade out 8 s into the
+  3v5. The digest and the briefs recompute the tests, so packets built before a change get
+  their fields.
+- `swings`: fights (`hud_game.fights`) where the counter, allies minus enemies, rose by 2 or more
+  over its value at the fight's start, with the player's final blows inside and no death of
+  theirs; the digest lists them as good-play leads (Runasapi 1:30-1:44, 4v5 to 5v3 on k01 and
+  k02). A counter rise from allies respawning counts too, so it's a lead, not a verdict; won and
+  lost fights in general are #39.
 - `chains`: runs of deaths each within 20 s of respawning from the one before (`short_life`).
   On 2026-10-20 it found Hollywood d03 → d04, the pair the player read as one decision and its
   consequence.
@@ -401,7 +416,7 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   "on respawn"), so an action like "back off to the last wall toward your spawn" doesn't pull in
   low-HP and respawn windows. A focus whose wording names no kind gets every kind.
 - `owcoach digest SESSION` writes `<session>/digest.md`: per match, every death's facts block,
-  the chains, ults, fights, final blows and the focus tests per focus, every line prefixed with
+  the chains, ults, fights, swings, final blows and the focus tests per focus, every line prefixed with
   the match folder's `mNN` so the triage can cite `m03 d04`. 2026-10-20 (6 matches, 22 deaths):
   ~19k tokens.
 

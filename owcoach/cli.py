@@ -180,7 +180,7 @@ def cmd_digest(a):
     kinds = sorted({k for f in focuses for k in kinds_for(f)}) or list(KINDS)
     for g in games:
         pk = json.loads((g / "packet" / "packet.json").read_text(encoding="utf-8"))
-        tests = [x for x in pk.get("focus_tests") or focus_tests(pk) if x["kind"] in kinds]
+        tests = [x for x in focus_tests(pk) if x["kind"] in kinds]
         ch = pk["chains"] if "chains" in pk else chains(pk)
         print(f"  {g.name:42s} deaths {len(pk.get('deaths') or []):2d}  chains {len(ch)}  focus tests {len(tests):2d}")
     print(f"digest -> {out} ({len(out.read_text(encoding='utf-8')) // 4:,} tokens, roughly)")
