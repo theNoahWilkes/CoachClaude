@@ -393,12 +393,16 @@ Free, from `packet.json` alone, so it also runs on packets built before it exist
   allies >= 2 while the player is alive (`down_two`: the counter holds until the next reading,
   stretches 1.5 s apart merge, under 2 s dropped, death-to-respawn cut out); the 20 s after each
   respawn with the counts at that moment (`respawn`). Each says which death it ended in, if any.
-  A `down_two` test is graded here (`grade`): held if the player lived through it, broke if it
-  ended in their death. No reader looks at its cells; the writer gets the grades in its brief.
-  The player (Runasapi 2026-10-27 f01): "down two" is a diagnosis on a death, and whether a
-  player who lived left late is out of scope. The reader had called a Fade out 8 s into a 3v5
-  "stayed in the fight" from cells 5 s apart. The digest and the briefs recompute the tests, so
-  packets built before a change get its fields.
+  A `down_two` stretch is cut at 15 s (about a respawn plus the walk; the library's respawns
+  take a median 10-12 s, and 85-90 s stretches were counter misreads) and graded here, as a
+  lost fight where the habit is "don't stagger" (the player, 2026-10-29): `grade` held if the
+  player was alive when it ended, neutral if they died within 3 s of its start (with the team),
+  broke if later, with `late_s` the seconds (how far behind the team they respawn). On the
+  library 2026-10-29, 14 down-two deaths came 2.2-10.0 s in, 4 of them within 3 s. No reader
+  looks at its cells; the writer gets the grades in its brief. Runasapi 2026-10-27 f01 had been
+  called "stayed in the fight" by a reader on cells 5 s apart, missing a Fade out 8 s into the
+  3v5. The digest and the briefs recompute the tests, so packets built before a change get
+  their fields.
 - `swings`: fights (`hud_game.fights`) where the counter, allies minus enemies, rose by 2 or more
   over its value at the fight's start, with the player's final blows inside and no death of
   theirs; the digest lists them as good-play leads (Runasapi 1:30-1:44, 4v5 to 5v3 on k01 and

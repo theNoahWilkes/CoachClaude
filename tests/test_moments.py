@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from owcoach.moments import digest, focus_tests, swings  # noqa: E402
+from owcoach.moments import digest, focus_tests, kinds_for, swings  # noqa: E402
 
 # 2026.10.27 - 22.31.54.02 / m02 Runasapi (Moira), 0:58-2:10 and d01: the alive counter,
 # the fights, final blows and deaths as the packet has them.
@@ -32,13 +32,30 @@ def test_down_two_lived_is_held_from_facts():
     assert (f01["grade"], f01["death"]) == ("held", None)
 
 
-def test_down_two_ending_in_death_is_broken():
+def test_down_two_death_6_s_in_is_a_stagger():
+    # d01 3:49: the counter went down two at 3:44, the player died 6 s later.
     d = next(x for x in focus_tests(RUNASAPI) if x["kind"] == "down_two" and x["death"] == "d01")
-    assert d["grade"] == "broke"
+    assert (d["grade"], d["late_s"]) == ("broke", 6.0)
+
+
+def test_down_two_death_within_grace_is_neutral():
+    pk = dict(RUNASAPI, deaths=[{"id": "d01", "t": 226.0, "clock": "3:46", "respawned": {"t": 238.0}}])
+    d = next(x for x in focus_tests(pk) if x["kind"] == "down_two" and x["death"] == "d01")
+    assert (d["grade"], d["late_s"]) == ("neutral", 2.5)
+
+
+def test_a_stuck_counter_is_cut_at_a_respawn():
+    pk = dict(RUNASAPI, alive_series=[[0.0, 5, 5], [300.0, 3, 5], [390.0, 5, 5]], deaths=[])
+    x = next(x for x in focus_tests(pk) if x["kind"] == "down_two")
+    assert (x["from"], x["to"], x["grade"]) == (300.0, 315.0, "held")
 
 
 def test_only_down_two_is_graded_from_facts():
     assert all(x["grade"] is None for x in focus_tests(RUNASAPI) if x["kind"] != "down_two")
+
+
+def test_the_lost_fight_focus_is_tested_by_down_two():
+    assert kinds_for("Lost fight: don't stagger! Retreat and live to rejoin, or die fast with the team.") == ["down_two"]
 
 
 def test_swing_finds_the_1_38_double_kill():
@@ -51,8 +68,8 @@ def test_digest_shows_grade_and_swing():
     text = digest(RUNASAPI, "m02", ["When the counter shows your team down two or more and you're still in "
                                     "the fight, stop healing forward and back off to the last wall toward your spawn."])
     assert "m02 1:30-1:44: 4v5 to 5v3, final blows k01, k02" in text
-    assert "graded from the facts: held (lived)" in text
-    assert "graded from the facts: broke (ended in d01)" in text
+    assert "graded from the facts: held (lived until the counter evened up)" in text
+    assert "graded from the facts: broke (d01 6.0 s after the counter went down two: staggered 6 s)" in text
 
 
 if __name__ == "__main__":

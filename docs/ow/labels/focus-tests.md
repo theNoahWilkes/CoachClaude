@@ -17,8 +17,13 @@ Clocks are the game clock the reports use. The match video runs a few seconds ah
   exit, but I wasn't in danger and I did disengage. "Down two" is a diagnosis on a death:
   getting myself killed and staggered is the learning opportunity. If I lived, what's left is
   whether I left too late, and that nuance is out of scope.
-- Now: a down-two window is graded from the facts, held when the player lived through it and
-  broken when it ended in their death; no image is read for it. The press context is "fight",
+- Noah (later): a firmer framing is "Lost fight: don't stagger!" If a fight is lost, either
+  safely retreat and live to rejoin the team, or die fast with the rest of the team. Dying a
+  few seconds after the fight is lost is neutral; dying x s later is bad by x, and 2 s is less
+  bad than 15 s.
+- Now: a down-two window is graded from the facts; no image is read for it. Alive when the
+  counter evens up is held, a death within 3 s is neutral, a later one is broken by that many
+  seconds. The press context is "fight",
   not "engage".
 
 ### 2026.10.27 - 22.31.54.02 / m02 Runasapi 1:30-1:44, good play (Moira)

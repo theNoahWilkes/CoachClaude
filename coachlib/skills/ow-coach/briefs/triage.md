@@ -24,8 +24,8 @@ quiet match.
   alive, an ult that turned a fight, a low-HP episode survived with the escape held). The
   digest's swings are the leads: fights the counter turned two or more the team's way on the
   player's final blows, with the player alive.
-- A down-two window the player lived through is already graded held from the facts; it is not a
-  moment on its own.
+- A down-two window is already graded from the facts (held, neutral, or staggered N s); one the
+  player lived through is not a moment on its own. A long stagger that ended in a death is.
 - A death that breaks the current focus or a recurring pattern is a strong pick even when the
   pattern is already in the lessons file: the repeat is what the player most needs to see. An
   escape that was ready, or a prompt that was on screen, and not used is the clearest kind.

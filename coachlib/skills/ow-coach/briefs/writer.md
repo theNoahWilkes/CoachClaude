@@ -4,8 +4,11 @@ picked for reading: judge it from its facts block alone, in one line, and mark i
 The focus tests' notes (tests_NN, when there are any) say held / broke per test; the stoplight
 counts come from them and from the deaths that tested the focus.
 Some tests are graded from the facts, and no reader looked at them. Count them as given and
-don't regrade them from a reader's note or a still: a down-two window the player lived through
-is held, one that ended in their death is broken (the death's notes say why).
+don't regrade them from a reader's note or a still. Down two is a lost fight, and the habit is
+"don't stagger": alive when the counter evened up is held; a death within 3 s of the counter
+going down two is neutral (died with the team: leave it out of the count); a later death is
+broken, and the seconds are how far behind the team the player respawned ("staggered 8 s";
+2 s is a lot less bad than 10 s, so say it).
 {{FACT_TESTS}}
 
 Game folder: {{GAME}}   (packet in {{GAME}}/packet, notes in {{GAME}}/packet/notes)

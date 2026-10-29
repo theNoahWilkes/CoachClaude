@@ -9,10 +9,14 @@ and so readers look at the overview cells of the focus tests only.
   stretch with the team down two or more while the player is alive, and the 20 s after each
   respawn. They are facts (`packet.json` → `focus_tests`, every kind for every match); which
   kinds test the current focus is matched from its wording when the digest is written.
-  A down-two window is graded here, from the facts, and no image is read for it: lived through
-  is held, ended in the player's death is broken. The player, on Runasapi 2026-10-27: "down two"
-  is a diagnosis on a death; whether a player who lived left too late is out of scope. A reader
-  on 5 s cells had called a Fade out 8 s in "stayed in the fight".
+  A down-two window is graded here, from the facts, and no image is read for it. The player's
+  framing (2026-10-29): down two means the fight is lost, and then "don't stagger": retreat and
+  live to rejoin, or die fast with the team. So a death within STAGGER_GRACE_S of the counter
+  going down two is neutral (died with the team), a later one is broken and the grade says by
+  how many seconds ("staggered 8 s": the player respawns that much after the team), and alive
+  when the counter evens up again (the first dead teammates are back from spawn) is held. A
+  reader on 5 s cells had called a Fade out 8 s into a 3v5 "stayed in the fight" (Runasapi
+  2026-10-27).
 - **Death chains** are deaths that follow from the one before: a death within `SHORT_LIFE` of
   respawning (the `short_life` flag). One poor decision and its consequence are one moment
   (the player, on m03 Hollywood 2026-10-20: a Fade into the open with ult ready, then a forced
@@ -33,6 +37,9 @@ RESPAWN_WINDOW = 20.0        # s after a respawn: the walk back in, where waitin
 DOWN_BY = 2                  # enemies alive minus allies alive that makes a "down two" stretch
 MIN_DOWN_S = 2.0             # s: a shorter stretch is a counter blip, not a situation
 MERGE_GAP_S = 1.5            # s: two down-two stretches this close are one
+STAGGER_GRACE_S = 3.0        # s after the counter goes down two: a death this soon is dying with the team
+LOST_FIGHT_CAP_S = 15.0      # s: a down-two stretch longer than this is cut here (about a respawn, 10-12 s
+                             # in the library, plus the walk); 85-90 s stretches were counter misreads
 SWING_BY = 2                 # counter gain (allies minus enemies) inside a fight that makes it a swing
 DEAD_PAD_S = 12.0            # s of DEAD after a death with no respawn read (the match ended or it was missed)
 
@@ -41,7 +48,7 @@ KINDS = {"low": "under half HP", "down_two": "team down two or more", "respawn":
 # the action half names walls and spawn too ("back off to the last wall toward your spawn").
 KIND_WORDS = {
     "low": r"half hp|half health|under half|low hp|low health|\bescape\b|\bwall\b|\bcover\b|line of sight",
-    "down_two": r"down two|down 2|two or more|2 or more|\b[1-3]v[3-5]\b",
+    "down_two": r"down two|down 2|two or more|2 or more|\b[1-3]v[3-5]\b|lost fight|stagger",
     "respawn": r"respawn|out of spawn|\bspawn\b",
 }
 
@@ -86,7 +93,7 @@ def down_two(packet: dict) -> list[tuple[float, float, int, int]]:
     for a, b, ally, enemy in raw:
         for x, y in _minus([(a, b)], _dead_spans(packet)):
             if y - x >= MIN_DOWN_S:
-                out.append((x, y, ally, enemy))
+                out.append((x, min(y, x + LOST_FIGHT_CAP_S), ally, enemy))
     return out
 
 
@@ -107,10 +114,11 @@ def focus_tests(packet: dict) -> list[dict]:
                       "what": f"min {e.get('min_hp')}/{e.get('max')}, {'died' if died else 'recovered'}",
                       "death": _death_in(packet, e["from"] - 1, e["to"] + 2.5) if died else None})
     for a, b, ally, enemy in down_two(packet):
-        death = _death_in(packet, a, b + 0.5)
+        d = next((d for d in packet.get("deaths") or [] if a <= d["t"] <= b + 0.5), None)
+        late = round(d["t"] - a, 1) if d else None
         tests.append({"kind": "down_two", "from": round(a, 1), "to": round(b, 1), "hero": None,
-                      "what": f"team down two ({ally}v{enemy} at worst)", "death": death,
-                      "grade": "broke" if death else "held"})
+                      "what": f"team down two ({ally}v{enemy} at worst)", "death": d["id"] if d else None,
+                      "grade": "held" if not d else ("neutral" if late <= STAGGER_GRACE_S else "broke"), "late_s": late})
     end = (packet.get("game") or {}).get("duration_s")
     for d in packet.get("deaths") or []:
         r = (d.get("respawned") or {}).get("t")
@@ -125,15 +133,18 @@ def focus_tests(packet: dict) -> list[dict]:
     for i, x in enumerate(tests, 1):
         x["id"] = f"f{i:02d}"
         x["clock"], x["to_clock"] = _clock(x["from"]), _clock(x["to"])
-    return [{k: x.get(k) for k in ("id", "kind", "from", "to", "clock", "to_clock", "hero", "what", "death", "grade")} for x in tests]
+    return [{k: x.get(k) for k in ("id", "kind", "from", "to", "clock", "to_clock", "hero", "what", "death", "grade", "late_s")}
+            for x in tests]
 
 
 def fact_grade(x: dict) -> str:
-    """How a focus test graded from the facts reads in a brief, e.g. "held (lived)"; "" when
-    it is the readers' to grade."""
-    if not x.get("grade"):
-        return ""
-    return f"{x['grade']} ({'ended in ' + x['death'] if x.get('death') else 'lived'})"
+    """How a focus test graded from the facts reads in a brief, e.g. "held (lived until the
+    counter evened up)"; "" when it is the readers' to grade."""
+    why = {"held": "lived until the counter evened up",
+           "neutral": f"{x.get('death')} {x.get('late_s')} s after the counter went down two: died with the team",
+           "broke": f"{x.get('death')} {x.get('late_s')} s after the counter went down two: staggered {x.get('late_s'):.0f} s"
+           if x.get("late_s") is not None else ""}
+    return f"{x['grade']} ({why[x['grade']]})" if x.get("grade") else ""
 
 
 def swings(packet: dict) -> list[dict]:
