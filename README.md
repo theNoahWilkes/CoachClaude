@@ -125,3 +125,20 @@ Read [CLAUDE.md](CLAUDE.md) first: the vocabulary, the decisions on record and t
 
 Replays, recordings, reports and stills contain other players' names. They live in your data
 folders and library, never in the repo (`.gitignore` blocks replays, databases and lessons).
+
+## License
+
+CoachClaude is free software under the [GNU Affero General Public License v3.0 or later](LICENSE)
+(`AGPL-3.0-or-later`). You may use, study, change and share it. If you share a changed version,
+or let other people use one over a network, you must offer them its source under the same
+license. The reasoning is in [ADR 0015](docs/adr/0015-agpl-license.md).
+
+Two kinds of files in the repo are not ours to license and keep their own terms:
+
+- **Hero notes** (`owcoach/assets/heroes/*.md`) are derived from the
+  [Overwatch Wiki](https://overwatch.fandom.com/) and stay under
+  [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); each note names its source
+  page. Notes that `owcoach hero` writes to your profile are the same.
+- **HUD templates** (`owcoach/assets/*.png`, `*.npz`) are small crops and digit samples taken
+  from Overwatch 2 screenshots, used only to read the game's HUD. Overwatch and its artwork are
+  © Blizzard Entertainment; CoachClaude is not affiliated with or endorsed by Blizzard.
